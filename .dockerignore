@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+docs
+_design
+.claude
+.playwright-mcp
+backend
+*.md
+*.png
+*.log
+.DS_Store

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.DS_Store
+**/.DS_Store
+.env
+*.env.local
+docs/screenshots/
+docs/test-shots/
+backend/server
+*.log
+.playwright-mcp/
+.claude/
+_design/
+*.png
+!src/**/*.png
+!public/**/*.png
+

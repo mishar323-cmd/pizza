@@ -1,0 +1,84 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pizza-db
+    environment:
+      POSTGRES_USER: pizza
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pizza_dev_pw}
+      POSTGRES_DB: pizza
+    volumes:
+      - pizza-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pizza -d pizza"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - pizza-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: pizza-backend:latest
+    container_name: pizza-backend
+    env_file: .env
+    environment:
+      DATABASE_URL: "postgres://pizza:${POSTGRES_PASSWORD:-pizza_dev_pw}@db:5432/pizza?sslmode=disable"
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - pizza-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pizza-frontend:latest
+    container_name: pizza-frontend
+    ports:
+      - "${FRONTEND_BIND:-127.0.0.1:8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - pizza-net
+
+volumes:
+  pizza-db-data:
+
+networks:
+  pizza-net:
+    driver: bridge
