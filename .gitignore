@@ -10,6 +10,7 @@ backend/server
 *.log
 .playwright-mcp/
 .claude/
+.omc/
 _design/
 *.png
 !src/**/*.png

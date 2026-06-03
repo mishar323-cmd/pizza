@@ -3,16 +3,98 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Дело в пицце — Красногорск, доставка за 60 минут</title>
+
+  <title>Дело в пицце — пиццерия в Глухово, доставка от 30 минут</title>
+  <meta name="description" content="Свежая пицца из печи в Глухово (Романовская 5). Классическая и римская пицца, доставка по ЖК «Резиденции Новая Рига», Архангельскому и Жуковке. Каждая 8-я пицца бесплатно."/>
+  <meta name="keywords" content="пицца Глухово, доставка пиццы Красногорск, римская пицца Новая Рига, пиццерия Романовская, заказать пиццу Архангельское, пицца на дом Жуковка"/>
+  <link rel="canonical" href="https://delovpizze.ru/"/>
+
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png"/>
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
   <meta name="theme-color" content="#DC2828"/>
+
+  <!-- Open Graph / Facebook / VK / WhatsApp -->
+  <meta property="og:type" content="restaurant"/>
+  <meta property="og:site_name" content="Дело в пицце"/>
+  <meta property="og:title" content="Дело в пицце — пиццерия в Глухово, доставка от 30 минут"/>
+  <meta property="og:description" content="Свежая пицца из печи в Глухово. Классическая и римская пицца, доставка по ЖК «Резиденции Новая Рига»."/>
+  <meta property="og:url" content="https://delovpizze.ru/"/>
+  <meta property="og:image" content="https://delovpizze.ru/og-cover.jpg"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:locale" content="ru_RU"/>
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Дело в пицце — пиццерия в Глухово"/>
+  <meta name="twitter:description" content="Свежая пицца из печи. Доставка от 30 минут по Глухово и Новой Риге."/>
+  <meta name="twitter:image" content="https://delovpizze.ru/og-cover.jpg"/>
+
+  <!-- JSON-LD Restaurant schema for Yandex/Google rich snippets -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    "name": "Дело в пицце",
+    "image": "https://delovpizze.ru/og-cover.jpg",
+    "url": "https://delovpizze.ru/",
+    "telephone": "+7-000-000-00-00",
+    "priceRange": "₽₽",
+    "servesCuisine": ["Pizza", "Italian"],
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "ул. Романовская, 5",
+      "addressLocality": "Глухово",
+      "addressRegion": "Московская область",
+      "postalCode": "143442",
+      "addressCountry": "RU"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 55.8108,
+      "longitude": 37.2542
+    },
+    "openingHoursSpecification": [{
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+      "opens": "11:00",
+      "closes": "23:00"
+    }],
+    "acceptsReservations": "False",
+    "hasMenu": "https://delovpizze.ru/#menu",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "5.0",
+      "reviewCount": "64"
+    }
+  }
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;700;800&family=Unbounded:wght@400;500;600;700;800;900&family=Caveat:wght@600;700&display=swap" rel="stylesheet"/>
+
+  <!-- Yandex.Metrika counter — TODO: replace 00000000 with real counter ID after registration on metrika.yandex.ru -->
+  <script type="text/javascript">
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();
+    for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(00000000, "init", {
+      clickmap:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:true,
+      ecommerce:"dataLayer"
+    });
+  </script>
+  <!-- /Yandex.Metrika counter -->
 </head>
 <body>
+  <noscript><img src="https://mc.yandex.ru/watch/00000000" style="position:absolute; left:-9999px;" alt=""/></noscript>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
