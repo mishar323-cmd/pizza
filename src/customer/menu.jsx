@@ -458,11 +458,61 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
   const [paying, setPaying] = React.useState(false);
   const [payError, setPayError] = React.useState('');
 
+  const [promoCode, setPromoCode] = React.useState('');
+  const [promoState, setPromoState] = React.useState('idle'); // idle | checking | ok | error
+  const [promoDiscount, setPromoDiscount] = React.useState(0);
+  const [promoMessage, setPromoMessage] = React.useState('');
+
+  React.useEffect(() => {
+    if (open) {
+      setPromoCode('');
+      setPromoState('idle');
+      setPromoDiscount(0);
+      setPromoMessage('');
+    }
+  }, [open]);
+
   if (!open) return null;
 
   const isPickup = receiveMethod === 'pickup';
   const delivery = isPickup ? 0 : (total >= free ? 0 : 150);
-  const grandTotal = total + delivery;
+  const subtotalWithDelivery = total + delivery;
+  const grandTotal = Math.max(0, subtotalWithDelivery - promoDiscount);
+
+  const applyPromo = async () => {
+    const code = promoCode.trim();
+    if (!code) return;
+    setPromoState('checking');
+    setPromoMessage('');
+    try {
+      const resp = await fetch('/api/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, subtotal: subtotalWithDelivery, phone: phone.trim() }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.discount > 0) {
+        setPromoState('ok');
+        setPromoDiscount(data.discount);
+        setPromoMessage(data.description || 'Промокод применён');
+      } else {
+        setPromoState('error');
+        setPromoDiscount(0);
+        setPromoMessage(data.error || 'Промокод не подходит');
+      }
+    } catch (e) {
+      setPromoState('error');
+      setPromoDiscount(0);
+      setPromoMessage('Не удалось проверить промокод');
+    }
+  };
+
+  const clearPromo = () => {
+    setPromoCode('');
+    setPromoState('idle');
+    setPromoDiscount(0);
+    setPromoMessage('');
+  };
 
   const resolvedAddr = isPickup
     ? 'Романовская 5, подъезд 10 (самовывоз)'
@@ -474,7 +524,18 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
 
   const handleSubmit = async () => {
     if (!canSubmit || paying) return;
-    const orderData = { name: name.trim(), phone: phone.trim(), address: resolvedAddr, comment: comment.trim(), receiveMethod, payMethod, deliveryTime: timeMode === 'exact' ? pickedTime : 'asap' };
+    const appliedCode = promoState === 'ok' ? promoCode.trim().toUpperCase() : '';
+    const orderData = {
+      name: name.trim(),
+      phone: phone.trim(),
+      address: resolvedAddr,
+      comment: comment.trim(),
+      receiveMethod,
+      payMethod,
+      deliveryTime: timeMode === 'exact' ? pickedTime : 'asap',
+      promoCode: appliedCode,
+      promoDiscount: promoState === 'ok' ? promoDiscount : 0,
+    };
 
     if (payMethod === 'online') {
       setPaying(true);
@@ -490,6 +551,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
             returnUrl: window.location.origin + `/?order=success&method=${receiveMethod}&time=${encodeURIComponent(timeMode === 'exact' ? pickedTime : 'asap')}`,
             phone: phone.trim(),
             items: items.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+            promoCode: appliedCode,
           }),
         });
         const data = await resp.json();
@@ -531,6 +593,12 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
               <span>Доставка</span>
               <span>{delivery === 0 ? 'бесплатно' : `${delivery} ₽`}</span>
             </div>
+            {promoState === 'ok' && promoDiscount > 0 && (
+              <div className="co-row co-total" style={{color:'#1B8A3D'}}>
+                <span>Промокод {promoCode.trim().toUpperCase()}</span>
+                <span>−{promoDiscount} ₽</span>
+              </div>
+            )}
           </div>
 
           {/* Receive method */}
@@ -614,6 +682,34 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
                 {!isPickup && <span className="co-pay-note"> · только самовывоз</span>}
               </button>
             </div>
+          </div>
+
+          {/* Promo code */}
+          <div className="co-section">
+            <div className="co-label">Промокод</div>
+            <div style={{display:'flex', gap:8}}>
+              <input
+                className="co-input"
+                placeholder="Введите промокод"
+                value={promoCode}
+                onChange={e => { setPromoCode(e.target.value.toUpperCase()); if (promoState !== 'idle') { setPromoState('idle'); setPromoDiscount(0); setPromoMessage(''); } }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } }}
+                disabled={promoState === 'ok' || promoState === 'checking'}
+                style={{flex:1, textTransform:'uppercase'}}
+              />
+              {promoState === 'ok' ? (
+                <button type="button" className="btn" onClick={clearPromo} style={{whiteSpace:'nowrap'}}>Убрать</button>
+              ) : (
+                <button type="button" className="btn" onClick={applyPromo} disabled={!promoCode.trim() || promoState === 'checking'} style={{whiteSpace:'nowrap'}}>
+                  {promoState === 'checking' ? '…' : 'Применить'}
+                </button>
+              )}
+            </div>
+            {promoMessage && (
+              <p className="co-hint" style={{color: promoState === 'ok' ? '#1B8A3D' : 'var(--primary)'}}>
+                {promoMessage}{promoState === 'ok' && promoDiscount > 0 ? ` — −${promoDiscount} ₽` : ''}
+              </p>
+            )}
           </div>
 
           {/* Comment */}

@@ -91,6 +91,43 @@ function App() {
   const orderMethod = urlParams.get('method') || 'delivery';
   const orderTime = urlParams.get('time') || 'asap';
 
+  // Capture UTM tags into localStorage on first hit; persist 30 days for attribution
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const incoming = {
+      utmSource: params.get('utm_source') || '',
+      utmMedium: params.get('utm_medium') || '',
+      utmCampaign: params.get('utm_campaign') || '',
+    };
+    if (incoming.utmSource || incoming.utmMedium || incoming.utmCampaign) {
+      try {
+        localStorage.setItem('utm_attribution', JSON.stringify({
+          ...incoming,
+          savedAt: Date.now(),
+        }));
+      } catch {}
+    }
+  }, []);
+
+  const readUtm = () => {
+    try {
+      const raw = localStorage.getItem('utm_attribution');
+      if (!raw) return { utmSource: '', utmMedium: '', utmCampaign: '' };
+      const parsed = JSON.parse(raw);
+      const ttl = 30 * 24 * 60 * 60 * 1000;
+      if (!parsed.savedAt || Date.now() - parsed.savedAt > ttl) {
+        return { utmSource: '', utmMedium: '', utmCampaign: '' };
+      }
+      return {
+        utmSource: parsed.utmSource || '',
+        utmMedium: parsed.utmMedium || '',
+        utmCampaign: parsed.utmCampaign || '',
+      };
+    } catch {
+      return { utmSource: '', utmMedium: '', utmCampaign: '' };
+    }
+  };
+
   if (orderSuccess) {
     return <OrderSuccessPage method={orderMethod} time={orderTime} onClose={() => {
       window.history.replaceState({}, '', '/');
@@ -236,7 +273,9 @@ function App() {
         addresses={profileState.profile.addresses}
         onConfirm={(data) => {
           const delivery = data.receiveMethod === 'pickup' ? 0 : (total >= 1000 ? 0 : 150);
-          const grandTotal = total + delivery;
+          const subtotalWithDelivery = total + delivery;
+          const promoDiscount = data.promoDiscount || 0;
+          const grandTotal = Math.max(0, subtotalWithDelivery - promoDiscount);
           profileState.placeOrder(cart, grandTotal, data.address);
           fetch('/api/orders', {
             method: 'POST',
@@ -246,6 +285,7 @@ function App() {
               items: cart.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
               total: grandTotal,
               delivery,
+              ...readUtm(),
             }),
           }).catch(() => {});
           setCart([]);
