@@ -48,6 +48,7 @@ func main() {
 	admins := repo.NewAdmins(pool)
 	orders := repo.NewOrders(pool)
 	settings := repo.NewSettings(pool)
+	promos := repo.NewPromos(pool)
 
 	seedAdmin(ctx, admins, cfg)
 
@@ -58,7 +59,8 @@ func main() {
 	adminDeps := &handlers.AdminDeps{
 		Admins: admins, Orders: orders, Settings: settings, Secret: cfg.JWTSecret,
 	}
-	orderDeps := &handlers.OrdersDeps{Orders: orders, Telegram: tg}
+	orderDeps := &handlers.OrdersDeps{Orders: orders, Promos: promos, Telegram: tg}
+	promoDeps := &handlers.PromosDeps{Promos: promos}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", handlers.Health)
@@ -66,6 +68,7 @@ func main() {
 	mux.HandleFunc("POST /api/notify-telegram", handlers.NotifyTelegram(tg))
 	mux.HandleFunc("POST /api/orders", handlers.CreateOrder(orderDeps))
 	mux.HandleFunc("POST /api/iiko/order", handlers.IikoOrder(ik))
+	mux.HandleFunc("POST /api/promo/validate", handlers.ValidatePromo(promoDeps))
 
 	mux.HandleFunc("POST /api/admin/login", handlers.AdminLogin(adminDeps))
 

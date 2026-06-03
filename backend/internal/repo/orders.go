@@ -28,6 +28,11 @@ type Order struct {
 	Items         []OrderItem `json:"items"`
 	Total         float64     `json:"total"`
 	Delivery      float64     `json:"delivery"`
+	PromoCode     string      `json:"promoCode,omitempty"`
+	PromoDiscount float64     `json:"promoDiscount,omitempty"`
+	UtmSource     string      `json:"utmSource,omitempty"`
+	UtmMedium     string      `json:"utmMedium,omitempty"`
+	UtmCampaign   string      `json:"utmCampaign,omitempty"`
 	Status        string      `json:"status"`
 	EtaMinutes    int         `json:"etaMinutes"`
 	AssignedTo    string      `json:"assignedTo"`
@@ -47,12 +52,14 @@ func (r *Orders) Create(ctx context.Context, o *Order) error {
 	}
 	return r.pool.QueryRow(ctx, `
 		INSERT INTO orders(number, customer_name, customer_phone, address, zone, comment,
-			receive_method, pay_method, delivery_time, items, total, delivery, status, eta_minutes, assigned_to, payment_id)
-		VALUES (nextval('order_number_seq'), $1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14, $15)
+			receive_method, pay_method, delivery_time, items, total, delivery, status, eta_minutes, assigned_to, payment_id,
+			promo_code, promo_discount, utm_source, utm_medium, utm_campaign)
+		VALUES (nextval('order_number_seq'), $1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14, $15, NULLIF($16, ''), $17, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''))
 		RETURNING id, number, status, eta_minutes, created_at, updated_at`,
 		o.CustomerName, o.CustomerPhone, o.Address, o.Zone, o.Comment,
 		o.ReceiveMethod, o.PayMethod, o.DeliveryTime, string(itemsJSON), o.Total,
 		o.Delivery, ifEmpty(o.Status, "new"), ifZeroInt(o.EtaMinutes, 35), o.AssignedTo, o.PaymentID,
+		o.PromoCode, o.PromoDiscount, o.UtmSource, o.UtmMedium, o.UtmCampaign,
 	).Scan(&o.ID, &o.Number, &o.Status, &o.EtaMinutes, &o.CreatedAt, &o.UpdatedAt)
 }
 

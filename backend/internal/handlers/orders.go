@@ -11,24 +11,29 @@ import (
 
 type OrdersDeps struct {
 	Orders   *repo.Orders
+	Promos   *repo.Promos
 	Telegram *telegram.Client
 }
 
 func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Name          string  `json:"name"`
-			Phone         string  `json:"phone"`
-			Address       string  `json:"address"`
-			Zone          string  `json:"zone"`
-			Comment       string  `json:"comment"`
-			ReceiveMethod string  `json:"receiveMethod"`
-			PayMethod     string  `json:"payMethod"`
-			DeliveryTime  string  `json:"deliveryTime"`
+			Name          string           `json:"name"`
+			Phone         string           `json:"phone"`
+			Address       string           `json:"address"`
+			Zone          string           `json:"zone"`
+			Comment       string           `json:"comment"`
+			ReceiveMethod string           `json:"receiveMethod"`
+			PayMethod     string           `json:"payMethod"`
+			DeliveryTime  string           `json:"deliveryTime"`
 			Items         []repo.OrderItem `json:"items"`
-			Total         float64 `json:"total"`
-			Delivery      float64 `json:"delivery"`
-			PaymentID     string  `json:"paymentId"`
+			Total         float64          `json:"total"`
+			Delivery      float64          `json:"delivery"`
+			PaymentID     string           `json:"paymentId"`
+			PromoCode     string           `json:"promoCode"`
+			UtmSource     string           `json:"utmSource"`
+			UtmMedium     string           `json:"utmMedium"`
+			UtmCampaign   string           `json:"utmCampaign"`
 		}
 		if err := decodeJSON(w, r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid request body")
@@ -48,6 +53,25 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 			req.DeliveryTime = "asap"
 		}
 
+		var (
+			promo         *repo.PromoCode
+			promoDiscount float64
+		)
+		if req.PromoCode != "" && d.Promos != nil {
+			p, err := d.Promos.FindByCode(r.Context(), req.PromoCode)
+			if err == nil {
+				subtotal := req.Total + req.Delivery
+				if disc, reason := resolveDiscount(p, subtotal); reason == "" {
+					promo = p
+					promoDiscount = disc
+				} else {
+					log.Printf("promo %s rejected at order creation: %s", req.PromoCode, reason)
+				}
+			} else {
+				log.Printf("promo lookup at order creation: %v", err)
+			}
+		}
+
 		o := &repo.Order{
 			CustomerName:  req.Name,
 			CustomerPhone: req.Phone,
@@ -61,11 +85,23 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 			Total:         req.Total,
 			Delivery:      req.Delivery,
 			PaymentID:     req.PaymentID,
+			UtmSource:     req.UtmSource,
+			UtmMedium:     req.UtmMedium,
+			UtmCampaign:   req.UtmCampaign,
+		}
+		if promo != nil {
+			o.PromoCode = promo.Code
+			o.PromoDiscount = promoDiscount
 		}
 		if err := d.Orders.Create(r.Context(), o); err != nil {
 			log.Printf("order create: %v", err)
 			writeError(w, http.StatusInternalServerError, "failed to create order")
 			return
+		}
+		if promo != nil {
+			if err := d.Promos.Redeem(r.Context(), promo.ID, o.ID, req.Phone, promoDiscount); err != nil {
+				log.Printf("promo redeem (non-fatal): %v", err)
+			}
 		}
 
 		go func(o repo.Order) {
