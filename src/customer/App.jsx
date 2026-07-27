@@ -211,12 +211,15 @@ function App() {
   return (
     <>
       <TopBar/>
+      {/* STUB: личный кабинет отключён до SMS-авторизации — вернуть
+          onProfileOpen={() => setProfileOpen(true)} + profileBadge={profileState.freeAvailable}
+          когда добавим auth (см. docs/superpowers/specs/2026-07-27-sms-auth-design.md) */}
       <Header
         cartCount={cartCount}
         cartTotal={total}
         onCartOpen={() => setDrawerOpen(true)}
-        onProfileOpen={() => setProfileOpen(true)}
-        profileBadge={profileState.freeAvailable}
+        onProfileOpen={() => showToast('Личный кабинет скоро — вход по номеру')}
+        profileBadge={false}
       />
       <ProfileModal
         open={profileOpen}
@@ -291,7 +294,7 @@ function App() {
           setCart([]);
           setCheckoutOpen(false);
           showToast('Заказ оформлен!');
-          setTimeout(() => setProfileOpen(true), 400);
+          // STUB: авто-открытие профиля отключено до SMS-авторизации
         }}
       />
       <ToastStack toasts={toasts}/>
