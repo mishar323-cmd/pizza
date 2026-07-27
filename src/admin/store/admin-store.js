@@ -11,7 +11,7 @@ const TODAY_KEY = () => new Date().toISOString().slice(0, 10);
 const DEFAULT_PROMOS = [
   { id: 'p1', enabled: true, kind: 'big',    tag: 'главная акция', title: '2 пиццы 30 см = 1 290 ₽', body: 'Любые две классические пиццы среднего размера. До конца недели.', cta: 'Собрать комбо' },
   { id: 'p2', enabled: true, kind: 'accent', tag: '−15%',           title: 'На первый заказ',          body: 'Промокод ПЕРВЫЙ при оформлении.', cta: 'Скопировать' },
-  { id: 'p3', enabled: true, kind: 'dark',   tag: 'каждый 5-й',     title: 'Бесплатно',                body: 'Маргарита 25 см в подарок к каждому пятому заказу.', cta: 'Подробнее' },
+  { id: 'p3', enabled: true, kind: 'dark',   tag: 'каждая 8-я',     title: 'Бесплатно',                body: 'Каждая 8-я пицца — в подарок.', cta: 'Подробнее' },
 ];
 
 const DEFAULT_ZONES = [

@@ -34,9 +34,9 @@ export function PromoSection({ onScrollToMenu }) {
           <div className="visual-disc"/>
         </div>
         <div className="promo-card dark">
-          <span className="promo-tag" style={{background: 'rgba(255,184,0,0.2)', color:'var(--accent)'}}>каждый 5-й</span>
+          <span className="promo-tag" style={{background: 'rgba(255,184,0,0.2)', color:'var(--accent)'}}>каждая 8-я</span>
           <h3>Бесплатно</h3>
-          <p>Маргарита 25 см в подарок к каждому пятому заказу.</p>
+          <p>Каждая 8-я пицца — в подарок.</p>
           <button className="promo-cta">Подробнее</button>
           <div className="visual-disc"/>
         </div>

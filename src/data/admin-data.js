@@ -14,7 +14,7 @@ const DEFAULT_STATE = {
   promos: [
     { id: 'p1', tag: 'главная акция', tagColor: 'primary', title: '2 пиццы 30 см\n= 1 290 ₽', text: 'Любые две классические пиццы среднего размера. До конца недели.', cta: 'Собрать комбо', active: true },
     { id: 'p2', tag: '−15%',           tagColor: 'accent',  title: 'На первый заказ',  text: 'Промокод ПЕРВЫЙ при оформлении.', cta: 'Скопировать', active: true },
-    { id: 'p3', tag: 'каждый 5-й',     tagColor: 'dark',    title: 'Бесплатно',         text: 'Маргарита 25 см в подарок к каждому пятому заказу.', cta: 'Подробнее', active: true },
+    { id: 'p3', tag: 'каждая 8-я',     tagColor: 'dark',    title: 'Бесплатно',         text: 'Каждая 8-я пицца — в подарок.', cta: 'Подробнее', active: true },
   ],
   menu: [
     { id: 'cheese',    name: 'Сырная',          cat: 'pizza', prices: { sm: 580, md: 680, lg: 780 }, stop: false },
