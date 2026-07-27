@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://delovpizze.ru/</loc>
+    <loc>https://delovpizza.ru/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://delovpizze.ru/#menu</loc>
+    <loc>https://delovpizza.ru/#menu</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://delovpizze.ru/#delivery</loc>
+    <loc>https://delovpizza.ru/#delivery</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://delovpizze.ru/#about</loc>
+    <loc>https://delovpizza.ru/#about</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://delovpizze.ru/#contacts</loc>
+    <loc>https://delovpizza.ru/#contacts</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
