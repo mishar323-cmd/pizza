@@ -11,6 +11,9 @@ RUN printf 'https://mirror.yandex.ru/mirrors/alpine/v3.20/main\nhttps://mirror.y
     && apk add --no-cache ca-certificates wget tzdata \
     && adduser -D -u 1000 app
 COPY --from=build /server /usr/local/bin/server
+# Pre-create the uploads dir owned by app so a fresh named volume mounted here
+# inherits app ownership (Docker seeds an empty volume from the image path).
+RUN mkdir -p /data/uploads && chown -R app:app /data
 USER app
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/server"]
