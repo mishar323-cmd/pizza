@@ -105,6 +105,46 @@ func (r *Promos) List(ctx context.Context) ([]PromoCode, error) {
 	return out, rows.Err()
 }
 
+const promoCols = `id, code, description, discount_type, discount_value, min_order,
+	max_uses, used_count, per_phone_limit, starts_at, expires_at, active, source, created_at, updated_at`
+
+func scanPromo(row pgx.Row, p *PromoCode) error {
+	return row.Scan(&p.ID, &p.Code, &p.Description, &p.DiscountType, &p.DiscountValue, &p.MinOrder,
+		&p.MaxUses, &p.UsedCount, &p.PerPhoneLimit, &p.StartsAt, &p.ExpiresAt, &p.Active, &p.Source, &p.CreatedAt, &p.UpdatedAt)
+}
+
+func (r *Promos) Create(ctx context.Context, p *PromoCode) error {
+	row := r.pool.QueryRow(ctx, `
+		INSERT INTO promo_codes (code, description, discount_type, discount_value, min_order,
+			max_uses, per_phone_limit, starts_at, expires_at, active, source)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		RETURNING `+promoCols,
+		strings.ToUpper(strings.TrimSpace(p.Code)), p.Description, p.DiscountType, p.DiscountValue, p.MinOrder,
+		p.MaxUses, p.PerPhoneLimit, p.StartsAt, p.ExpiresAt, p.Active, p.Source)
+	return scanPromo(row, p)
+}
+
+// Update changes everything except the code (code is the promo's identity).
+func (r *Promos) Update(ctx context.Context, p *PromoCode) error {
+	row := r.pool.QueryRow(ctx, `
+		UPDATE promo_codes SET description=$2, discount_type=$3, discount_value=$4, min_order=$5,
+			max_uses=$6, per_phone_limit=$7, starts_at=$8, expires_at=$9, active=$10, source=$11, updated_at=now()
+		WHERE id=$1
+		RETURNING `+promoCols,
+		p.ID, p.Description, p.DiscountType, p.DiscountValue, p.MinOrder,
+		p.MaxUses, p.PerPhoneLimit, p.StartsAt, p.ExpiresAt, p.Active, p.Source)
+	err := scanPromo(row, p)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrPromoNotFound
+	}
+	return err
+}
+
+func (r *Promos) Delete(ctx context.Context, id int64) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM promo_codes WHERE id=$1`, id)
+	return err
+}
+
 func normalizePhone(p string) string {
 	var b strings.Builder
 	for _, r := range p {

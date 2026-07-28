@@ -9,9 +9,12 @@ import ZonesAdvanced from './zones.jsx';
 import { SettingsPage } from './settings.jsx';
 import { CookTime, Promos } from './cooking-promo.jsx';
 import { AdminsPage } from './admins.jsx';
+import { AuditPage, NotificationsBell } from './audit.jsx';
 
 function AdminLayout({ session, onLogout, store, setStore }) {
-  const [page, setPage] = React.useState('orders');
+  const [page, setPage] = React.useState(() =>
+    (typeof location !== 'undefined' && location.hash === '#audit' && session.role === 'super') ? 'audit' : 'orders'
+  );
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   const today = AdminStore.TODAY_KEY();
@@ -26,7 +29,10 @@ function AdminLayout({ session, onLogout, store, setStore }) {
     { id: 'stop',     label: 'Стоп-лист',       ic: '🚫', badge: store.stopList.length || null },
     { id: 'zones',    label: 'Зоны доставки',   ic: '📍' },
     { id: 'couriers', label: 'Курьеры',         ic: '🛵', badge: (store.couriers || []).length || null },
-    ...(session.role === 'super' ? [{ id: 'admins', label: 'Админы', ic: '👤' }] : []),
+    ...(session.role === 'super' ? [
+      { id: 'admins', label: 'Админы', ic: '👤' },
+      { id: 'audit',  label: 'Журнал', ic: '🔔' },
+    ] : []),
   ];
 
   const renderPage = () => {
@@ -40,12 +46,18 @@ function AdminLayout({ session, onLogout, store, setStore }) {
       case 'zones':   return <ZonesAdvanced store={store} setStore={setStore}/>;
       case 'couriers':return <Couriers      store={store} setStore={setStore}/>;
       case 'admins':  return <AdminsPage    session={session}/>;
+      case 'audit':   return <AuditPage/>;
       default: return null;
     }
   };
 
   return (
     <div className="admin-shell">
+      {session.role === 'super' && (
+        <div style={{ position: 'fixed', top: 14, right: 18, zIndex: 50 }}>
+          <NotificationsBell onOpenJournal={() => setPage('audit')} />
+        </div>
+      )}
       <div className="mobile-topbar">
         <button onClick={() => setSidebarOpen(true)} aria-label="Меню">☰</button>
         <strong style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 15 }}>Админ — {pages.find(p => p.id === page)?.label}</strong>

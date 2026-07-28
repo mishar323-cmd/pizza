@@ -56,8 +56,9 @@ func main() {
 	tg := telegram.NewClient(cfg.TGBotToken, cfg.TGChatID)
 	ik := iiko.NewClient()
 
+	audit := repo.NewAudit(pool)
 	adminDeps := &handlers.AdminDeps{
-		Admins: admins, Orders: orders, Settings: settings, Secret: cfg.JWTSecret,
+		Admins: admins, Orders: orders, Settings: settings, Promos: promos, Audit: audit, Secret: cfg.JWTSecret,
 	}
 	orderDeps := &handlers.OrdersDeps{Orders: orders, Promos: promos, Telegram: tg}
 	promoDeps := &handlers.PromosDeps{Promos: promos}
@@ -82,6 +83,11 @@ func main() {
 	adminMux.HandleFunc("GET /api/admin/admins", handlers.AdminsList(adminDeps))
 	adminMux.HandleFunc("POST /api/admin/admins", handlers.AdminCreate(adminDeps))
 	adminMux.HandleFunc("DELETE /api/admin/admins/{id}", handlers.AdminDelete(adminDeps))
+	adminMux.HandleFunc("GET /api/admin/audit", handlers.AuditList(adminDeps))
+	adminMux.HandleFunc("GET /api/admin/promos", handlers.AdminPromosList(adminDeps))
+	adminMux.HandleFunc("POST /api/admin/promos", handlers.AdminPromoCreate(adminDeps))
+	adminMux.HandleFunc("PUT /api/admin/promos/{id}", handlers.AdminPromoUpdate(adminDeps))
+	adminMux.HandleFunc("DELETE /api/admin/promos/{id}", handlers.AdminPromoDelete(adminDeps))
 	mux.Handle("/api/admin/", requireAdmin(adminMux))
 
 	handler := recoverPanic(withLogging(withCORS(cfg.AllowOrigin, mux)))

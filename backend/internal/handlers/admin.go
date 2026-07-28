@@ -16,7 +16,40 @@ type AdminDeps struct {
 	Admins   *repo.Admins
 	Orders   *repo.Orders
 	Settings *repo.Settings
+	Promos   *repo.Promos
+	Audit    *repo.Audit
 	Secret   []byte
+}
+
+// clientIP extracts the real client IP, honouring the proxy's X-Forwarded-For.
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if i := strings.IndexByte(xff, ','); i > 0 {
+			return strings.TrimSpace(xff[:i])
+		}
+		return strings.TrimSpace(xff)
+	}
+	return r.RemoteAddr
+}
+
+// recordAudit writes a best-effort audit entry for the authenticated caller.
+// Never blocks the request on failure.
+func recordAudit(d *AdminDeps, r *http.Request, action, target string, details map[string]any) {
+	if d.Audit == nil {
+		return
+	}
+	e := repo.AuditEntry{Action: action, Target: target, IP: clientIP(r)}
+	if c := auth.FromContext(r.Context()); c != nil {
+		e.AdminID, e.AdminLogin, e.AdminName = c.AdminID, c.Login, c.Name
+	}
+	if details != nil {
+		if b, err := json.Marshal(details); err == nil {
+			e.Details = b
+		}
+	}
+	if err := d.Audit.Record(r.Context(), e); err != nil {
+		log.Printf("audit record: %v", err)
+	}
 }
 
 func AdminLogin(d *AdminDeps) http.HandlerFunc {
@@ -50,6 +83,12 @@ func AdminLogin(d *AdminDeps) http.HandlerFunc {
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to issue token")
 			return
+		}
+		if d.Audit != nil {
+			_ = d.Audit.Record(r.Context(), repo.AuditEntry{
+				AdminID: a.ID, AdminLogin: a.Login, AdminName: a.Name,
+				Action: "login", Target: a.Name, IP: clientIP(r),
+			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
 			"token": tok,
@@ -150,6 +189,7 @@ func AdminCreate(d *AdminDeps) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "не удалось создать админа")
 			return
 		}
+		recordAudit(d, r, "admin.create", "админ "+a.Login, map[string]any{"role": a.Role, "name": a.Name})
 		writeJSON(w, http.StatusCreated, a)
 	}
 }
@@ -195,6 +235,132 @@ func AdminDelete(d *AdminDeps) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "не удалось удалить админа")
 			return
 		}
+		recordAudit(d, r, "admin.delete", "админ "+target.Login, map[string]any{"role": target.Role, "name": target.Name})
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}
+}
+
+func AuditList(d *AdminDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if requireSuper(w, r) == nil {
+			return
+		}
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		list, err := d.Audit.List(r.Context(), limit)
+		if err != nil {
+			log.Printf("audit list: %v", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if list == nil {
+			list = []repo.AuditEntry{}
+		}
+		writeJSON(w, http.StatusOK, list)
+	}
+}
+
+func validatePromoInput(p *repo.PromoCode) string {
+	p.Code = strings.ToUpper(strings.TrimSpace(p.Code))
+	if p.Code == "" {
+		return "код обязателен"
+	}
+	if p.DiscountType != "percent" && p.DiscountType != "fixed" {
+		return "тип скидки должен быть «percent» (%) или «fixed» (₽)"
+	}
+	if p.DiscountValue <= 0 {
+		return "скидка должна быть больше 0"
+	}
+	if p.DiscountType == "percent" && p.DiscountValue > 100 {
+		return "процент скидки не может превышать 100"
+	}
+	if p.MinOrder < 0 {
+		return "минимальная сумма не может быть отрицательной"
+	}
+	return ""
+}
+
+func AdminPromosList(d *AdminDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		list, err := d.Promos.List(r.Context())
+		if err != nil {
+			log.Printf("promos list: %v", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if list == nil {
+			list = []repo.PromoCode{}
+		}
+		writeJSON(w, http.StatusOK, list)
+	}
+}
+
+func AdminPromoCreate(d *AdminDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var p repo.PromoCode
+		if err := decodeJSON(w, r, &p); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		if msg := validatePromoInput(&p); msg != "" {
+			writeError(w, http.StatusBadRequest, msg)
+			return
+		}
+		if err := d.Promos.Create(r.Context(), &p); err != nil {
+			log.Printf("promo create: %v", err)
+			writeError(w, http.StatusConflict, "не удалось создать промокод (возможно, такой код уже есть)")
+			return
+		}
+		recordAudit(d, r, "promo.create", "промокод "+p.Code,
+			map[string]any{"type": p.DiscountType, "value": p.DiscountValue})
+		writeJSON(w, http.StatusCreated, p)
+	}
+}
+
+func AdminPromoUpdate(d *AdminDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+		var p repo.PromoCode
+		if err := decodeJSON(w, r, &p); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		p.ID = id
+		if msg := validatePromoInput(&p); msg != "" {
+			writeError(w, http.StatusBadRequest, msg)
+			return
+		}
+		if err := d.Promos.Update(r.Context(), &p); err != nil {
+			if errors.Is(err, repo.ErrPromoNotFound) {
+				writeError(w, http.StatusNotFound, "промокод не найден")
+				return
+			}
+			log.Printf("promo update: %v", err)
+			writeError(w, http.StatusInternalServerError, "не удалось обновить промокод")
+			return
+		}
+		recordAudit(d, r, "promo.update", "промокод "+p.Code,
+			map[string]any{"type": p.DiscountType, "value": p.DiscountValue})
+		writeJSON(w, http.StatusOK, p)
+	}
+}
+
+func AdminPromoDelete(d *AdminDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+		if err := d.Promos.Delete(r.Context(), id); err != nil {
+			log.Printf("promo delete: %v", err)
+			writeError(w, http.StatusInternalServerError, "не удалось удалить промокод")
+			return
+		}
+		recordAudit(d, r, "promo.delete", "промокод #"+strconv.FormatInt(id, 10), nil)
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	}
 }
@@ -240,6 +406,8 @@ func AdminOrderUpdate(d *AdminDeps) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
+		recordAudit(d, r, "order.status", "заказ #"+strconv.FormatInt(id, 10),
+			map[string]any{"status": req.Status, "assignedTo": req.AssignedTo})
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	}
 }
@@ -280,15 +448,35 @@ func AdminSettingsPut(d *AdminDeps) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
+		recordAudit(d, r, "settings."+key, settingsLabel(key), nil)
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	}
 }
 
 var validSettingsKeys = map[string]bool{
-	"promos": true, "zones": true, "stop": true, "cook": true, "couriers": true, "store": true,
+	"promos": true, "zones": true, "stop": true, "cook": true, "couriers": true, "store": true, "menu": true,
 }
 
 func validSettingsKey(k string) bool { return validSettingsKeys[k] }
+
+func settingsLabel(k string) string {
+	switch k {
+	case "promos":
+		return "акции"
+	case "zones":
+		return "зоны доставки"
+	case "stop":
+		return "стоп-лист"
+	case "cook":
+		return "время готовки"
+	case "couriers":
+		return "курьеры"
+	case "store":
+		return "меню и настройки"
+	default:
+		return k
+	}
+}
 
 func defaultSettings(key string) string {
 	switch key {
@@ -298,6 +486,8 @@ func defaultSettings(key string) string {
 		return `{"items":[],"categories":[]}`
 	case "cook":
 		return `{"cookTimeMinutes":35}`
+	case "menu":
+		return `{"categories":[]}`
 	default:
 		return `{}`
 	}

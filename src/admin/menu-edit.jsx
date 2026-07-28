@@ -28,7 +28,26 @@ export function MenuEdit({ store, setStore }) {
     { id: 'snacks', label: 'Закуски' },
     { id: 'drinks', label: 'Напитки' },
     { id: 'desserts', label: 'Десерты' },
+    ...(store.menuCategories || []),
   ];
+
+  const addCategory = () => {
+    const label = window.prompt('Название новой категории (например, «Соусы»):');
+    if (!label || !label.trim()) return;
+    const id = 'cat-' + Date.now().toString(36);
+    const next = { ...store, menuCategories: [...(store.menuCategories || []), { id, label: label.trim() }] };
+    setStore(next);
+    AdminStore.save(next);
+    setCat(id);
+  };
+
+  const removeCategory = (id) => {
+    if (!window.confirm('Удалить категорию? Позиции в ней останутся, но без категории.')) return;
+    const next = { ...store, menuCategories: (store.menuCategories || []).filter(c => c.id !== id) };
+    setStore(next);
+    AdminStore.save(next);
+    if (cat === id) setCat('all');
+  };
 
   const filtered = menu.filter(p => {
     if (cat !== 'all' && (p.cat || 'pizza') !== cat) return false;
@@ -107,6 +126,10 @@ export function MenuEdit({ store, setStore }) {
       <div className="toolbar">
         <input type="search" placeholder="Найти позицию..." value={search} onChange={(e) => setSearch(e.target.value)}/>
         <span className="grow"/>
+        {(store.menuCategories || []).some(c => c.id === cat) && (
+          <button className="abtn abtn-danger" onClick={() => removeCategory(cat)}>Удалить категорию</button>
+        )}
+        <button className="abtn abtn-ghost" onClick={addCategory}>+ Категория</button>
         <button className="abtn abtn-primary" onClick={startAdd}>+ Добавить позицию</button>
       </div>
 

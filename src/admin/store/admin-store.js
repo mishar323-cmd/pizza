@@ -34,6 +34,7 @@ const DEFAULT_STORE = {
   stopCategories: [],
   zones: DEFAULT_ZONES,
   menu: null,
+  menuCategories: [],
   orders: [],
   couriers: DEFAULT_COURIERS,
 };
@@ -127,13 +128,14 @@ export const AdminStore = {
   // Bulk load
   async init() {
     try {
-      const [promos, zones, stop, cook, couriers, orders] = await Promise.all([
+      const [promos, zones, stop, cook, couriers, orders, menuData] = await Promise.all([
         api('GET', '/settings/promos').catch(() => null),
         api('GET', '/settings/zones').catch(() => null),
         api('GET', '/settings/stop').catch(() => null),
         api('GET', '/settings/cook').catch(() => null),
         api('GET', '/settings/couriers').catch(() => null),
         api('GET', '/orders').catch(() => []),
+        api('GET', '/settings/menu').catch(() => null),
       ]);
       const next = {
         ...DEFAULT_STORE,
@@ -143,6 +145,7 @@ export const AdminStore = {
         stopCategories: stop?.categories || [],
         cookTimeMinutes: cook?.cookTimeMinutes ?? 35,
         couriers: Array.isArray(couriers) && couriers.length ? couriers : DEFAULT_STORE.couriers,
+        menuCategories: Array.isArray(menuData?.categories) ? menuData.categories : [],
         orders: (orders || []).map(transformOrder),
       };
       _lastStore = next;
@@ -167,6 +170,7 @@ export const AdminStore = {
       tasks.push(api('PUT', '/settings/cook', { cookTimeMinutes: next.cookTimeMinutes }));
     }
     if (next.couriers !== prev.couriers) tasks.push(api('PUT', '/settings/couriers', next.couriers));
+    if (next.menuCategories !== prev.menuCategories) tasks.push(api('PUT', '/settings/menu', { categories: next.menuCategories || [] }));
     _lastStore = next;
     Promise.all(tasks).catch(e => console.warn('Settings save partial fail:', e));
   },
@@ -190,5 +194,24 @@ export const AdminStore = {
   },
   async deleteAdmin(id) {
     return api('DELETE', `/admins/${id}`);
+  },
+
+  // Audit log (super/owner only — enforced server-side)
+  async listAudit(limit = 100) {
+    return api('GET', '/audit?limit=' + limit);
+  },
+
+  // Promo codes (all admins)
+  async listPromos() {
+    return api('GET', '/promos');
+  },
+  async createPromo(p) {
+    return api('POST', '/promos', p);
+  },
+  async updatePromo(id, p) {
+    return api('PUT', `/promos/${id}`, p);
+  },
+  async deletePromo(id) {
+    return api('DELETE', `/promos/${id}`);
   },
 };
