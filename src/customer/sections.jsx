@@ -80,7 +80,7 @@ export function ReviewsSection() {
     <section id="reviews" className="container" data-screen-label="reviews">
       <div className="sec-head">
         <div>
-          <h2>53 отзыва.<br/><span className="accent">5.0 из 5.</span></h2>
+          <h2>57 отзывов.<br/><span className="accent">5.0 из 5.</span></h2>
         </div>
         <p className="sub">Реальные отзывы клиентов с Яндекс.Карт.</p>
       </div>
