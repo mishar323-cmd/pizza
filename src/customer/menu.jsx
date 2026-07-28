@@ -366,7 +366,7 @@ export function CartDrawer({ open, onClose, items, addToCart, removeFromCart, to
 
 /* ======================== Pizza Detail Modal ======================== */
 export function PizzaDetail({ pizza, onClose, onAdd }) {
-  const isPizza = !!(pizza && pizza.prices);
+  const isPizza = !!(pizza && pizza.prices && (pizza.prices.sm || pizza.prices.md || pizza.prices.lg));
   const customSizes = (pizza && Array.isArray(pizza.sizes)) ? pizza.sizes : null;
   const [size, setSize] = React.useState(isPizza ? 'md' : 0);
   const [crust, setCrust] = React.useState('thin');

@@ -70,13 +70,14 @@ export function MenuEdit({ store, setStore }) {
   };
 
   const startAdd = () => {
+    const c = cat === 'all' ? 'pizza' : cat;
     setDraft({
       id: 'new-' + Date.now(),
-      cat: cat === 'all' ? 'pizza' : cat,
+      cat: c,
       name: '',
       desc: '',
       ingredients: [],
-      prices: { sm: 0, md: 0, lg: 0 },
+      ...(c === 'pizza' ? { prices: { sm: 0, md: 0, lg: 0 } } : {}),
       price: 0,
       weight: 420,
       kcal: 250,
@@ -90,13 +91,18 @@ export function MenuEdit({ store, setStore }) {
   const saveEdit = () => {
     const clean = { ...draft, ingredients: (draft.ingredientsText || '').split(',').map(s => s.trim()).filter(Boolean) };
     delete clean.ingredientsText;
-    if (clean.cat !== 'pizza' && clean.hasSizes) {
-      clean.sizes = (clean.sizes || [])
-        .map(s => ({ label: (s.label || '').trim(), price: +s.price || 0 }))
-        .filter(s => s.label || s.price);
-      if (clean.sizes.length) clean.price = Math.min(...clean.sizes.map(s => s.price));
-    } else {
+    if (clean.cat === 'pizza') {
       delete clean.sizes;
+    } else {
+      delete clean.prices; // не-пицца не использует размеры 25/30/35
+      if (clean.hasSizes) {
+        clean.sizes = (clean.sizes || [])
+          .map(s => ({ label: (s.label || '').trim(), price: +s.price || 0 }))
+          .filter(s => s.label || s.price);
+        if (clean.sizes.length) clean.price = Math.min(...clean.sizes.map(s => s.price));
+      } else {
+        delete clean.sizes;
+      }
     }
     delete clean.hasSizes;
     if (editing === 'new') {
@@ -152,7 +158,7 @@ export function MenuEdit({ store, setStore }) {
               <span className="chip" style={{ alignSelf: 'flex-start' }}>{(cats.find(c => c.id === (p.cat || 'pizza')) || {}).label}</span>
               <h4>{p.name}</h4>
               <p className="muted" style={{ fontSize: 12, margin: 0 }}>{p.desc}</p>
-              {isPizza(p) && p.prices ? (
+              {p.prices && (p.prices.sm || p.prices.md || p.prices.lg) ? (
                 <div className="prices">
                   <span><b>{p.prices?.sm || 0}</b> ₽ <span className="muted">25см</span></span>
                   <span><b>{p.prices?.md || 0}</b> ₽ <span className="muted">30см</span></span>
