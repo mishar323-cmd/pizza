@@ -21,6 +21,7 @@ type Config struct {
 	SeedAdminLogin  string
 	SeedAdminPass   string
 	SeedAdminName   string
+	UploadDir       string
 }
 
 func Load() *Config {
@@ -38,6 +39,7 @@ func Load() *Config {
 		SeedAdminLogin:  getenvDefault("ADMIN_LOGIN", "admin"),
 		SeedAdminPass:   os.Getenv("ADMIN_PASSWORD"),
 		SeedAdminName:   getenvDefault("ADMIN_NAME", "Администратор"),
+		UploadDir:       getenvDefault("UPLOAD_DIR", "/data/uploads"),
 	}
 
 	if cfg.DatabaseURL == "" {

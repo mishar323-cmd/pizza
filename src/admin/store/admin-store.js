@@ -217,4 +217,21 @@ export const AdminStore = {
   async deletePromo(id) {
     return api('DELETE', `/promos/${id}`);
   },
+
+  // Upload an image file (multipart) → returns { url }
+  async uploadImage(file) {
+    const fd = new FormData();
+    fd.append('file', file);
+    const tok = getToken();
+    const res = await fetch(API_BASE + '/upload', {
+      method: 'POST',
+      headers: tok ? { Authorization: 'Bearer ' + tok } : {},
+      body: fd,
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || 'Не удалось загрузить файл');
+    }
+    return res.json();
+  },
 };

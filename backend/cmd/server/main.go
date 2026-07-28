@@ -71,6 +71,7 @@ func main() {
 	mux.HandleFunc("POST /api/iiko/order", handlers.IikoOrder(ik))
 	mux.HandleFunc("POST /api/promo/validate", handlers.ValidatePromo(promoDeps))
 	mux.HandleFunc("GET /api/menu", handlers.PublicMenu(settings))
+	mux.HandleFunc("GET /api/uploads/{name}", handlers.ServeUpload(cfg.UploadDir))
 
 	mux.HandleFunc("POST /api/admin/login", handlers.AdminLogin(adminDeps))
 
@@ -85,6 +86,7 @@ func main() {
 	adminMux.HandleFunc("POST /api/admin/admins", handlers.AdminCreate(adminDeps))
 	adminMux.HandleFunc("DELETE /api/admin/admins/{id}", handlers.AdminDelete(adminDeps))
 	adminMux.HandleFunc("GET /api/admin/audit", handlers.AuditList(adminDeps))
+	adminMux.HandleFunc("POST /api/admin/upload", handlers.AdminUpload(cfg.UploadDir))
 	adminMux.HandleFunc("GET /api/admin/promos", handlers.AdminPromosList(adminDeps))
 	adminMux.HandleFunc("POST /api/admin/promos", handlers.AdminPromoCreate(adminDeps))
 	adminMux.HandleFunc("PUT /api/admin/promos/{id}", handlers.AdminPromoUpdate(adminDeps))

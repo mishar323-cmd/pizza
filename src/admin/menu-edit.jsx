@@ -19,6 +19,7 @@ export function MenuEdit({ store, setStore }) {
   const [cat, setCat] = React.useState('all');
   const [editing, setEditing] = React.useState(null);
   const [draft, setDraft] = React.useState(null);
+  const [uploading, setUploading] = React.useState(false);
 
   const cats = [
     { id: 'all', label: 'Все' },
@@ -255,8 +256,26 @@ export function MenuEdit({ store, setStore }) {
               </>
             )}
             <div className="field">
-              <label>URL картинки</label>
-              <input value={draft.img || ''} onChange={(e) => setDraft({ ...draft, img: e.target.value })} placeholder="https://..."/>
+              <label>Картинка</label>
+              {draft.img && (
+                <img src={draft.img} alt="" style={{ maxHeight: 90, maxWidth: '100%', borderRadius: 8, display: 'block', marginBottom: 8, objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; }}/>
+              )}
+              <input type="file" accept="image/*" disabled={uploading} onChange={async (e) => {
+                const f = e.target.files && e.target.files[0];
+                if (!f) return;
+                setUploading(true);
+                try {
+                  const { url } = await AdminStore.uploadImage(f);
+                  setDraft(d => ({ ...d, img: url }));
+                } catch (err) {
+                  alert(err.message || 'Не удалось загрузить файл');
+                } finally {
+                  setUploading(false);
+                  e.target.value = '';
+                }
+              }}/>
+              {uploading && <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>Загрузка…</div>}
+              <input value={draft.img || ''} onChange={(e) => setDraft({ ...draft, img: e.target.value })} placeholder="или вставь ссылку https://..." style={{ marginTop: 8 }}/>
             </div>
             <div className="amodal-actions">
               <button className="abtn abtn-ghost" onClick={closeEdit}>Отмена</button>
