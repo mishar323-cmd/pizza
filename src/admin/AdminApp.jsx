@@ -10,6 +10,7 @@ import { SettingsPage } from './settings.jsx';
 import { CookTime, Promos } from './cooking-promo.jsx';
 import { AdminsPage } from './admins.jsx';
 import { AuditPage, NotificationsBell } from './audit.jsx';
+import { PromoCodesPage } from './promocodes.jsx';
 
 function AdminLayout({ session, onLogout, store, setStore }) {
   const [page, setPage] = React.useState(() =>
@@ -25,6 +26,7 @@ function AdminLayout({ session, onLogout, store, setStore }) {
     { id: 'history',  label: 'История заказов', ic: '📜' },
     { id: 'cook',     label: 'Время готовки',   ic: '⏱' },
     { id: 'promos',   label: 'Акции',           ic: '🎉', badge: store.promos.length },
+    { id: 'promocodes', label: 'Промокоды',     ic: '🏷️' },
     { id: 'menu',     label: 'Меню',            ic: '🍕' },
     { id: 'stop',     label: 'Стоп-лист',       ic: '🚫', badge: store.stopList.length || null },
     { id: 'zones',    label: 'Зоны доставки',   ic: '📍' },
@@ -41,6 +43,7 @@ function AdminLayout({ session, onLogout, store, setStore }) {
       case 'history': return <OrdersHistory store={store}/>;
       case 'cook':    return <CookTime      store={store} setStore={setStore}/>;
       case 'promos':  return <Promos        store={store} setStore={setStore}/>;
+      case 'promocodes': return <PromoCodesPage/>;
       case 'menu':    return <MenuEdit      store={store} setStore={setStore}/>;
       case 'stop':    return <StopList      store={store} setStore={setStore}/>;
       case 'zones':   return <ZonesAdvanced store={store} setStore={setStore}/>;
