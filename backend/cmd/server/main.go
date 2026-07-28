@@ -79,6 +79,9 @@ func main() {
 	adminMux.HandleFunc("PUT /api/admin/orders/{id}", handlers.AdminOrderUpdate(adminDeps))
 	adminMux.HandleFunc("GET /api/admin/settings/{key}", handlers.AdminSettingsGet(adminDeps))
 	adminMux.HandleFunc("PUT /api/admin/settings/{key}", handlers.AdminSettingsPut(adminDeps))
+	adminMux.HandleFunc("GET /api/admin/admins", handlers.AdminsList(adminDeps))
+	adminMux.HandleFunc("POST /api/admin/admins", handlers.AdminCreate(adminDeps))
+	adminMux.HandleFunc("DELETE /api/admin/admins/{id}", handlers.AdminDelete(adminDeps))
 	mux.Handle("/api/admin/", requireAdmin(adminMux))
 
 	handler := recoverPanic(withLogging(withCORS(cfg.AllowOrigin, mux)))

@@ -69,3 +69,28 @@ func (r *Admins) List(ctx context.Context) ([]Admin, error) {
 	}
 	return out, rows.Err()
 }
+
+func (r *Admins) GetByID(ctx context.Context, id int64) (*Admin, error) {
+	var a Admin
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, login, password_hash, name, role FROM admins WHERE id=$1`, id,
+	).Scan(&a.ID, &a.Login, &a.PasswordHash, &a.Name, &a.Role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
+func (r *Admins) CountByRole(ctx context.Context, role string) (int, error) {
+	var n int
+	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM admins WHERE role=$1`, role).Scan(&n)
+	return n, err
+}
+
+func (r *Admins) Delete(ctx context.Context, id int64) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM admins WHERE id=$1`, id)
+	return err
+}

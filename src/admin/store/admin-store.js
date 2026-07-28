@@ -180,4 +180,15 @@ export const AdminStore = {
     const orders = await api('GET', '/orders').catch(() => []);
     return (orders || []).map(transformOrder);
   },
+
+  // Admin management (super/owner only — enforced server-side)
+  async listAdmins() {
+    return api('GET', '/admins');
+  },
+  async createAdmin({ login, name, password, role }) {
+    return api('POST', '/admins', { login, name, password, role });
+  },
+  async deleteAdmin(id) {
+    return api('DELETE', `/admins/${id}`);
+  },
 };

@@ -71,6 +71,134 @@ func AdminMe(d *AdminDeps) http.HandlerFunc {
 	}
 }
 
+// requireSuper returns the caller's claims only if they have the "super" role
+// (owner). Otherwise it writes an error and returns nil. Admin management
+// (create/list/delete admins) is owner-only.
+func requireSuper(w http.ResponseWriter, r *http.Request) *auth.Claims {
+	c := auth.FromContext(r.Context())
+	if c == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return nil
+	}
+	if c.Role != "super" {
+		writeError(w, http.StatusForbidden, "только владелец может управлять админами")
+		return nil
+	}
+	return c
+}
+
+func AdminsList(d *AdminDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if requireSuper(w, r) == nil {
+			return
+		}
+		list, err := d.Admins.List(r.Context())
+		if err != nil {
+			log.Printf("admins list: %v", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if list == nil {
+			list = []repo.Admin{}
+		}
+		writeJSON(w, http.StatusOK, list)
+	}
+}
+
+func AdminCreate(d *AdminDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if requireSuper(w, r) == nil {
+			return
+		}
+		var req struct {
+			Login    string `json:"login"`
+			Name     string `json:"name"`
+			Password string `json:"password"`
+			Role     string `json:"role"`
+		}
+		if err := decodeJSON(w, r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+		req.Login = strings.ToLower(strings.TrimSpace(req.Login))
+		req.Name = strings.TrimSpace(req.Name)
+		if req.Login == "" || req.Name == "" || len(req.Password) < 8 {
+			writeError(w, http.StatusBadRequest, "логин, имя и пароль (не короче 8 символов) обязательны")
+			return
+		}
+		if req.Role != "super" && req.Role != "admin" {
+			req.Role = "admin"
+		}
+		existing, err := d.Admins.GetByLogin(r.Context(), req.Login)
+		if err != nil {
+			log.Printf("admin create lookup: %v", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if existing != nil {
+			writeError(w, http.StatusConflict, "логин уже занят")
+			return
+		}
+		hash, err := auth.HashPassword(req.Password)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		a, err := d.Admins.Create(r.Context(), req.Login, hash, req.Name, req.Role)
+		if err != nil {
+			log.Printf("admin create: %v", err)
+			writeError(w, http.StatusInternalServerError, "не удалось создать админа")
+			return
+		}
+		writeJSON(w, http.StatusCreated, a)
+	}
+}
+
+func AdminDelete(d *AdminDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		c := requireSuper(w, r)
+		if c == nil {
+			return
+		}
+		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+		if id == c.AdminID {
+			writeError(w, http.StatusBadRequest, "нельзя удалить самого себя")
+			return
+		}
+		target, err := d.Admins.GetByID(r.Context(), id)
+		if err != nil {
+			log.Printf("admin delete lookup: %v", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if target == nil {
+			writeError(w, http.StatusNotFound, "админ не найден")
+			return
+		}
+		if target.Role == "super" {
+			nSuper, err := d.Admins.CountByRole(r.Context(), "super")
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "internal error")
+				return
+			}
+			if nSuper <= 1 {
+				writeError(w, http.StatusBadRequest, "нельзя удалить последнего владельца")
+				return
+			}
+		}
+		if err := d.Admins.Delete(r.Context(), id); err != nil {
+			log.Printf("admin delete: %v", err)
+			writeError(w, http.StatusInternalServerError, "не удалось удалить админа")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}
+}
+
 func AdminOrdersList(d *AdminDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))

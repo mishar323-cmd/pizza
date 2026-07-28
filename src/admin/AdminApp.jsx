@@ -8,6 +8,7 @@ import { MenuEdit } from './menu-edit.jsx';
 import ZonesAdvanced from './zones.jsx';
 import { SettingsPage } from './settings.jsx';
 import { CookTime, Promos } from './cooking-promo.jsx';
+import { AdminsPage } from './admins.jsx';
 
 function AdminLayout({ session, onLogout, store, setStore }) {
   const [page, setPage] = React.useState('orders');
@@ -25,6 +26,7 @@ function AdminLayout({ session, onLogout, store, setStore }) {
     { id: 'stop',     label: 'Стоп-лист',       ic: '🚫', badge: store.stopList.length || null },
     { id: 'zones',    label: 'Зоны доставки',   ic: '📍' },
     { id: 'couriers', label: 'Курьеры',         ic: '🛵', badge: (store.couriers || []).length || null },
+    ...(session.role === 'super' ? [{ id: 'admins', label: 'Админы', ic: '👤' }] : []),
   ];
 
   const renderPage = () => {
@@ -37,6 +39,7 @@ function AdminLayout({ session, onLogout, store, setStore }) {
       case 'stop':    return <StopList      store={store} setStore={setStore}/>;
       case 'zones':   return <ZonesAdvanced store={store} setStore={setStore}/>;
       case 'couriers':return <Couriers      store={store} setStore={setStore}/>;
+      case 'admins':  return <AdminsPage    session={session}/>;
       default: return null;
     }
   };
