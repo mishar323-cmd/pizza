@@ -120,13 +120,17 @@ export function MenuSection({ cart, addToCart, removeFromCart, getQty, openDetai
           />
         ))}
         {cat !== 'pizza' && items.map(item => (
-          <SimpleCard
-            key={item.id}
-            item={item}
-            qty={getQty(item.id)}
-            onAdd={() => addToCart(item, { simple: true })}
-            onMinus={() => removeFromCart(item.id)}
-          />
+          (item.sizes && item.sizes.length) ? (
+            <SimpleCard key={item.id} item={item} sized onOpen={() => openDetail(item)} />
+          ) : (
+            <SimpleCard
+              key={item.id}
+              item={item}
+              qty={getQty(item.id)}
+              onAdd={() => addToCart(item, { simple: true })}
+              onMinus={() => removeFromCart(item.id)}
+            />
+          )
         ))}
       </div>
     </section>
@@ -201,11 +205,14 @@ function PizzaCard({ p, qty, onAdd, onMinus, onOpen }) {
   );
 }
 
-function SimpleCard({ item, qty, onAdd, onMinus }) {
+function SimpleCard({ item, qty, onAdd, onMinus, sized, onOpen }) {
   const isShake = item.id && item.id.startsWith('shake-');
+  const minPrice = sized ? Math.min(...item.sizes.map(s => Number(s.price) || 0)) : item.price;
   return (
     <article className="pizza-card">
-      <div className="pizza-image">
+      <button className="pizza-image" onClick={sized ? onOpen : undefined}
+        style={sized ? { cursor: 'pointer', background: 'transparent', padding: 0, border: 'none', width: '100%' } : undefined}
+        aria-label={sized ? `Открыть ${item.name}` : undefined}>
         {item.img ? (
           <img src={item.img} alt={item.name} loading="lazy"
             style={isShake ? {
@@ -215,12 +222,14 @@ function SimpleCard({ item, qty, onAdd, onMinus }) {
         ) : (
           <div style={{display:'grid', placeItems:'center', height:'100%', fontSize: 64, opacity:0.5}}>🍽</div>
         )}
-      </div>
-      <h3 className="pizza-name">{item.name}</h3>
+      </button>
+      <h3 className="pizza-name" onClick={sized ? onOpen : undefined} style={sized ? { cursor: 'pointer' } : undefined}>{item.name}</h3>
       <p className="pizza-desc">{item.desc}</p>
       <div className="pizza-foot">
-        <div className="pizza-price">{item.price} ₽</div>
-        {qty > 0 ? (
+        <div className="pizza-price">{sized && <small>от </small>}{minPrice} ₽</div>
+        {sized ? (
+          <button className="add-btn" onClick={onOpen} aria-label="Выбрать размер">＋</button>
+        ) : qty > 0 ? (
           <div className="add-btn in-cart">
             <button className="qty-btn" onClick={onMinus}>−</button>
             <span className="qty">{qty}</span>
@@ -281,7 +290,7 @@ export function CartDrawer({ open, onClose, items, addToCart, removeFromCart, to
                   </div>
                   <div className="info">
                     <strong>{it.name}</strong>
-                    <small>{it.simple ? it.desc : `${(SIZES.find(s => s.id === it.sizeId) || {}).label || '30 см'} · тонкое`}</small>
+                    <small>{it.sizeLabel ? it.sizeLabel : it.simple ? it.desc : `${(SIZES.find(s => s.id === it.sizeId) || {}).label || '30 см'} · тонкое`}</small>
                   </div>
                   <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4}}>
                     <div className="price">{it.price * it.qty} ₽</div>
@@ -357,19 +366,25 @@ export function CartDrawer({ open, onClose, items, addToCart, removeFromCart, to
 
 /* ======================== Pizza Detail Modal ======================== */
 export function PizzaDetail({ pizza, onClose, onAdd }) {
-  const [size, setSize] = React.useState('md');
+  const isPizza = !!(pizza && pizza.prices);
+  const customSizes = (pizza && Array.isArray(pizza.sizes)) ? pizza.sizes : null;
+  const [size, setSize] = React.useState(isPizza ? 'md' : 0);
   const [crust, setCrust] = React.useState('thin');
   const [addons, setAddons] = React.useState([]);
 
   if (!pizza) return null;
 
-  const addonsTotal = addons.reduce((s, a) => s + (ADDONS.find(x => x.id === a)?.p || 0), 0);
-  const basePrice = (pizza.prices && pizza.prices[size]) || pizza.price || 0;
+  const addonsTotal = isPizza ? addons.reduce((s, a) => s + (ADDONS.find(x => x.id === a)?.p || 0), 0) : 0;
+  const basePrice = isPizza
+    ? ((pizza.prices && pizza.prices[size]) || 0)
+    : (customSizes ? (Number(customSizes[size]?.price) || 0) : (pizza.price || 0));
   const finalPrice = basePrice + addonsTotal;
 
   const toggleAddon = (id) => {
     setAddons(addons.includes(id) ? addons.filter(a => a !== id) : [...addons, id]);
   };
+
+  const hasIngredients = Array.isArray(pizza.ingredients) && pizza.ingredients.length > 0;
 
   return (
     <div className="pdmodal-overlay open" onClick={onClose}>
@@ -378,7 +393,7 @@ export function PizzaDetail({ pizza, onClose, onAdd }) {
         <div className="pdmodal-pic">
           <div className="disc">
             {(() => {
-              const sizeIdx = ['sm','md','lg'].indexOf(size);
+              const sizeIdx = isPizza ? ['sm','md','lg'].indexOf(size) : 0;
               const src = (pizza.imgs && pizza.imgs[sizeIdx]) || pizza.img;
               return <img src={src} alt={pizza.name} onError={(e)=>{e.currentTarget.style.display='none'}}/>;
             })()}
@@ -387,14 +402,16 @@ export function PizzaDetail({ pizza, onClose, onAdd }) {
         <div className="pdmodal-body">
           <h3>{pizza.name}</h3>
           <p className="desc">{pizza.desc}</p>
-          <div className="ingredients">
-            <strong style={{color:'var(--ink)'}}>Ингредиенты: </strong>
-            {pizza.ingredients.join(' · ')}
-          </div>
+          {hasIngredients && (
+            <div className="ingredients">
+              <strong style={{color:'var(--ink)'}}>Ингредиенты: </strong>
+              {pizza.ingredients.join(' · ')}
+            </div>
+          )}
 
           <div style={{fontSize: 13, fontWeight: 600, marginBottom: 8, color:'var(--ink-soft)'}}>Размер</div>
           <div className="size-toggle">
-            {SIZES.map(s => {
+            {isPizza ? SIZES.map(s => {
               const sizePrice = (pizza.prices && pizza.prices[s.id]) || null;
               return (
                 <button key={s.id} className={size === s.id ? 'on' : ''} onClick={() => setSize(s.id)}>
@@ -403,27 +420,41 @@ export function PizzaDetail({ pizza, onClose, onAdd }) {
                   {sizePrice && <div style={{fontSize: 12, fontWeight: 700, marginTop: 4}}>{sizePrice} ₽</div>}
                 </button>
               );
-            })}
-          </div>
-
-          <div style={{fontSize: 13, fontWeight: 600, marginBottom: 8, color:'var(--ink-soft)'}}>Добавить</div>
-          <div className="add-row">
-            {ADDONS.map(a => (
-              <button
-                key={a.id}
-                className={`ad-item ${addons.includes(a.id) ? 'on' : ''}`}
-                onClick={() => toggleAddon(a.id)}
-              >
-                {a.label}
-                <span className="p">+{a.p} ₽</span>
+            }) : (customSizes || []).map((s, i) => (
+              <button key={i} className={size === i ? 'on' : ''} onClick={() => setSize(i)}>
+                {s.label}
+                <div style={{fontSize: 12, fontWeight: 700, marginTop: 4}}>{s.price} ₽</div>
               </button>
             ))}
           </div>
 
+          {isPizza && (
+            <>
+              <div style={{fontSize: 13, fontWeight: 600, marginBottom: 8, color:'var(--ink-soft)'}}>Добавить</div>
+              <div className="add-row">
+                {ADDONS.map(a => (
+                  <button
+                    key={a.id}
+                    className={`ad-item ${addons.includes(a.id) ? 'on' : ''}`}
+                    onClick={() => toggleAddon(a.id)}
+                  >
+                    {a.label}
+                    <span className="p">+{a.p} ₽</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           <div className="pdmodal-foot">
             <div className="price-big">{finalPrice} ₽</div>
             <button className="btn btn-primary btn-lg" onClick={() => {
-              onAdd(pizza, { sizeId: size, crustId: crust, addons, price: finalPrice });
+              if (isPizza) {
+                onAdd(pizza, { sizeId: size, crustId: crust, addons, price: finalPrice });
+              } else {
+                const lbl = customSizes ? (customSizes[size]?.label || '') : '';
+                onAdd(pizza, { sizeLabel: lbl, price: finalPrice, cartKey: `${pizza.id}|${size}` });
+              }
               onClose();
             }}>
               Добавить в корзину

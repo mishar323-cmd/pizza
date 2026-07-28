@@ -84,11 +84,20 @@ export function MenuEdit({ store, setStore }) {
     setEditing('new');
   };
 
-  const startEdit = (p) => { setDraft({ ...p, ingredientsText: (p.ingredients || []).join(', ') }); setEditing(p.id); };
+  const startEdit = (p) => { setDraft({ ...p, ingredientsText: (p.ingredients || []).join(', '), hasSizes: !!(p.sizes && p.sizes.length) }); setEditing(p.id); };
   const closeEdit = () => { setEditing(null); setDraft(null); };
   const saveEdit = () => {
     const clean = { ...draft, ingredients: (draft.ingredientsText || '').split(',').map(s => s.trim()).filter(Boolean) };
     delete clean.ingredientsText;
+    if (clean.cat !== 'pizza' && clean.hasSizes) {
+      clean.sizes = (clean.sizes || [])
+        .map(s => ({ label: (s.label || '').trim(), price: +s.price || 0 }))
+        .filter(s => s.label || s.price);
+      if (clean.sizes.length) clean.price = Math.min(...clean.sizes.map(s => s.price));
+    } else {
+      delete clean.sizes;
+    }
+    delete clean.hasSizes;
     if (editing === 'new') {
       const next = { ...store, menu: [...menu, clean] };
       setStore(next); AdminStore.save(next);
@@ -148,6 +157,8 @@ export function MenuEdit({ store, setStore }) {
                   <span><b>{p.prices?.md || 0}</b> ₽ <span className="muted">30см</span></span>
                   <span><b>{p.prices?.lg || 0}</b> ₽ <span className="muted">35см</span></span>
                 </div>
+              ) : (p.sizes && p.sizes.length) ? (
+                <div className="prices"><span>от <b>{Math.min(...p.sizes.map(s => Number(s.price) || 0))}</b> ₽ <span className="muted">{p.sizes.length} разм.</span></span></div>
               ) : (
                 <div className="prices"><span><b>{p.price || 0}</b> ₽</span></div>
               )}
@@ -183,7 +194,7 @@ export function MenuEdit({ store, setStore }) {
               <label>Описание</label>
               <textarea rows="2" value={draft.desc} onChange={(e) => setDraft({ ...draft, desc: e.target.value })}/>
             </div>
-            {(draft.cat === 'pizza' || draft.cat === 'roman') ? (
+            {draft.cat === 'pizza' ? (
               <>
                 <div className="field">
                   <label>Ингредиенты (через запятую)</label>
@@ -215,10 +226,33 @@ export function MenuEdit({ store, setStore }) {
                 </div>
               </>
             ) : (
-              <div className="field">
-                <label>Цена, ₽</label>
-                <input type="number" value={draft.price || 0} onChange={(e) => setDraft({ ...draft, price: +e.target.value })}/>
-              </div>
+              <>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, margin: '4px 0', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={!!draft.hasSizes} onChange={(e) => {
+                    const on = e.target.checked;
+                    setDraft({ ...draft, hasSizes: on, sizes: on ? (draft.sizes && draft.sizes.length ? draft.sizes : [{ label: '', price: draft.price || 0 }]) : undefined });
+                  }}/>
+                  Несколько размеров (напр. «6 шт / 12 шт»)
+                </label>
+                {draft.hasSizes ? (
+                  <div className="field">
+                    <label>Размеры и цены</label>
+                    {(draft.sizes || []).map((s, i) => (
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 40px', gap: 8, marginBottom: 8 }}>
+                        <input placeholder="Название (6 шт)" value={s.label || ''} onChange={(e) => { const sizes = [...draft.sizes]; sizes[i] = { ...sizes[i], label: e.target.value }; setDraft({ ...draft, sizes }); }}/>
+                        <input type="number" placeholder="₽" value={s.price || 0} onChange={(e) => { const sizes = [...draft.sizes]; sizes[i] = { ...sizes[i], price: +e.target.value }; setDraft({ ...draft, sizes }); }}/>
+                        <button type="button" className="abtn abtn-danger" title="Удалить размер" onClick={() => setDraft({ ...draft, sizes: draft.sizes.filter((_, j) => j !== i) })}>×</button>
+                      </div>
+                    ))}
+                    <button type="button" className="abtn abtn-ghost" onClick={() => setDraft({ ...draft, sizes: [...(draft.sizes || []), { label: '', price: 0 }] })}>+ Размер</button>
+                  </div>
+                ) : (
+                  <div className="field">
+                    <label>Цена, ₽</label>
+                    <input type="number" value={draft.price || 0} onChange={(e) => setDraft({ ...draft, price: +e.target.value })}/>
+                  </div>
+                )}
+              </>
             )}
             <div className="field">
               <label>URL картинки</label>

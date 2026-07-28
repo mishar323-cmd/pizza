@@ -180,6 +180,7 @@ function App() {
         ...item,
         cartKey: key,
         sizeId: opts.sizeId,
+        sizeLabel: opts.sizeLabel,
         crustId: opts.crustId,
         addons: opts.addons,
         price: basePrice,
