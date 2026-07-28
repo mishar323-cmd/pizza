@@ -42,6 +42,9 @@ type CreatePaymentRequest struct {
 	ReturnURL   string  `json:"returnUrl"`
 	Phone       string  `json:"phone"`
 	Items       []Item  `json:"items"`
+	// PromoCode is informational — the discount is already reflected in Amount
+	// by the frontend. Accepted here so strict JSON decoding doesn't 400.
+	PromoCode string `json:"promoCode"`
 }
 
 func (c *Client) CreatePayment(ctx context.Context, req CreatePaymentRequest) ([]byte, int, error) {
@@ -58,7 +61,7 @@ func (c *Client) CreatePayment(ctx context.Context, req CreatePaymentRequest) ([
 		})
 		itemsSum += it.Price * float64(it.Qty)
 	}
-	if delivery := req.Amount - itemsSum; delivery > 0 {
+	if delivery := req.Amount - itemsSum; delivery > 0.005 {
 		receiptItems = append(receiptItems, map[string]any{
 			"description":     "Доставка",
 			"quantity":        "1",
@@ -67,6 +70,19 @@ func (c *Client) CreatePayment(ctx context.Context, req CreatePaymentRequest) ([
 			"payment_mode":    "full_payment",
 			"payment_subject": "service",
 		})
+	} else if delivery < -0.005 {
+		// A promo discount larger than the delivery fee makes the charged
+		// amount lower than the itemised total. YooKassa rejects a receipt
+		// whose line items don't sum to the payment amount, so collapse to a
+		// single consolidated line equal to what is actually charged.
+		receiptItems = []map[string]any{{
+			"description":     "Заказ (со скидкой по промокоду)",
+			"quantity":        "1",
+			"amount":          map[string]string{"value": fmt.Sprintf("%.2f", req.Amount), "currency": "RUB"},
+			"vat_code":        1,
+			"payment_mode":    "full_payment",
+			"payment_subject": "commodity",
+		}}
 	}
 
 	payload := map[string]any{
