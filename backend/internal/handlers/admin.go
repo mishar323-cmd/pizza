@@ -453,6 +453,29 @@ func AdminSettingsPut(d *AdminDeps) http.HandlerFunc {
 	}
 }
 
+// PublicMenu serves the customer-facing menu (items + custom categories) and
+// the stop-list, so the storefront reflects what admins edit. Public, no auth.
+// Falls back to empty when nothing is stored yet — the frontend then uses its
+// bundled default menu.
+func PublicMenu(settings *repo.Settings) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		menuRaw, err := settings.GetRaw(r.Context(), "menu", `{"items":null,"categories":[]}`)
+		if err != nil {
+			log.Printf("public menu: %v", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		stopRaw, err := settings.GetRaw(r.Context(), "stop", `{"items":[],"categories":[]}`)
+		if err != nil {
+			stopRaw = []byte(`{"items":[],"categories":[]}`)
+		}
+		writeJSON(w, http.StatusOK, map[string]json.RawMessage{
+			"menu": json.RawMessage(menuRaw),
+			"stop": json.RawMessage(stopRaw),
+		})
+	}
+}
+
 var validSettingsKeys = map[string]bool{
 	"promos": true, "zones": true, "stop": true, "cook": true, "couriers": true, "store": true, "menu": true,
 }

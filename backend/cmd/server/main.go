@@ -70,6 +70,7 @@ func main() {
 	mux.HandleFunc("POST /api/orders", handlers.CreateOrder(orderDeps))
 	mux.HandleFunc("POST /api/iiko/order", handlers.IikoOrder(ik))
 	mux.HandleFunc("POST /api/promo/validate", handlers.ValidatePromo(promoDeps))
+	mux.HandleFunc("GET /api/menu", handlers.PublicMenu(settings))
 
 	mux.HandleFunc("POST /api/admin/login", handlers.AdminLogin(adminDeps))
 

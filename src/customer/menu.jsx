@@ -9,14 +9,48 @@ export function MenuSection({ cart, addToCart, removeFromCart, getQty, openDetai
   const [cat, setCat] = React.useState('pizza');
   const [filter, setFilter] = React.useState(null);
 
-  const categories = [
-    { id: 'pizza', label: 'Пицца', count: PIZZA_DATA.length },
-    { id: 'roman', label: 'Римская', count: ROMAN_DATA.length },
-    { id: 'sandwich', label: 'Сэндвичи', count: SANDWICH_DATA.length },
-    { id: 'snacks', label: 'Закуски', count: SNACK_DATA.length },
-    { id: 'drinks', label: 'Напитки', count: DRINK_DATA.length },
-    { id: 'desserts', label: 'Десерты', count: DESSERT_DATA.length },
+  // Live menu published by admins (falls back to the bundled static menu until
+  // an admin saves changes). Static shows instantly, dynamic swaps in on load.
+  const [dyn, setDyn] = React.useState(null);
+  React.useEffect(() => {
+    let alive = true;
+    fetch('/api/menu')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (!alive || !d) return;
+        const items = d.menu && Array.isArray(d.menu.items) ? d.menu.items : null;
+        const customCats = d.menu && Array.isArray(d.menu.categories) ? d.menu.categories : [];
+        const stopSet = new Set(d.stop && Array.isArray(d.stop.items) ? d.stop.items : []);
+        if (!items && customCats.length === 0 && stopSet.size === 0) { setDyn(null); return; }
+        const byCat = {};
+        (items || []).forEach(it => { const c = it.cat || 'pizza'; (byCat[c] = byCat[c] || []).push(it); });
+        setDyn({ byCat, customCats, stopSet, hasItems: !!items });
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const STATIC_BY_CAT = {
+    pizza: PIZZA_DATA, roman: ROMAN_DATA, sandwich: SANDWICH_DATA,
+    snacks: SNACK_DATA, drinks: DRINK_DATA, desserts: DESSERT_DATA,
+  };
+  const baseCats = [
+    { id: 'pizza', label: 'Пицца' },
+    { id: 'roman', label: 'Римская' },
+    { id: 'sandwich', label: 'Сэндвичи' },
+    { id: 'snacks', label: 'Закуски' },
+    { id: 'drinks', label: 'Напитки' },
+    { id: 'desserts', label: 'Десерты' },
   ];
+
+  const byCat = (dyn && dyn.hasItems) ? dyn.byCat : STATIC_BY_CAT;
+  const stopSet = dyn ? dyn.stopSet : null;
+  const customCats = dyn ? dyn.customCats : [];
+  const visible = (id) => (byCat[id] || []).filter(p => !(stopSet && stopSet.has(p.id)));
+
+  const categories = [...baseCats, ...customCats]
+    .map(c => ({ id: c.id, label: c.label, count: visible(c.id).length }))
+    .filter(c => baseCats.some(b => b.id === c.id) || c.count > 0);
 
   const filters = [
     { id: 'veg', label: 'Вегетарианское', icon: 'leaf' },
@@ -26,20 +60,15 @@ export function MenuSection({ cart, addToCart, removeFromCart, getQty, openDetai
   ];
 
   const items = React.useMemo(() => {
+    let list = visible(cat);
     if (cat === 'pizza') {
-      let list = PIZZA_DATA;
       if (filter === 'veg') list = list.filter(p => p.veg);
       if (filter === 'hot') list = list.filter(p => p.hot);
       if (filter === 'new') list = list.filter(p => p.isNew);
       if (filter === 'meat') list = list.filter(p => !p.veg);
-      return list;
     }
-    if (cat === 'roman') return ROMAN_DATA;
-    if (cat === 'sandwich') return SANDWICH_DATA;
-    if (cat === 'snacks') return SNACK_DATA;
-    if (cat === 'drinks') return DRINK_DATA;
-    return DESSERT_DATA;
-  }, [cat, filter]);
+    return list;
+  }, [cat, filter, byCat, stopSet]);
 
   return (
     <section id="menu" className="container menu-shell" data-screen-label="menu">

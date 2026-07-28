@@ -145,6 +145,7 @@ export const AdminStore = {
         stopCategories: stop?.categories || [],
         cookTimeMinutes: cook?.cookTimeMinutes ?? 35,
         couriers: Array.isArray(couriers) && couriers.length ? couriers : DEFAULT_STORE.couriers,
+        menu: (menuData && Array.isArray(menuData.items) && menuData.items.length) ? menuData.items : DEFAULT_STORE.menu,
         menuCategories: Array.isArray(menuData?.categories) ? menuData.categories : [],
         orders: (orders || []).map(transformOrder),
       };
@@ -170,7 +171,9 @@ export const AdminStore = {
       tasks.push(api('PUT', '/settings/cook', { cookTimeMinutes: next.cookTimeMinutes }));
     }
     if (next.couriers !== prev.couriers) tasks.push(api('PUT', '/settings/couriers', next.couriers));
-    if (next.menuCategories !== prev.menuCategories) tasks.push(api('PUT', '/settings/menu', { categories: next.menuCategories || [] }));
+    if (next.menu !== prev.menu || next.menuCategories !== prev.menuCategories) {
+      tasks.push(api('PUT', '/settings/menu', { items: next.menu, categories: next.menuCategories || [] }));
+    }
     _lastStore = next;
     Promise.all(tasks).catch(e => console.warn('Settings save partial fail:', e));
   },
