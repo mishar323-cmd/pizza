@@ -92,6 +92,13 @@ func (r *Orders) List(ctx context.Context, limit int) ([]Order, error) {
 	return out, rows.Err()
 }
 
+func (r *Orders) MarkPaid(ctx context.Context, id int64, paymentID string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE orders SET paid = true, payment_id = COALESCE(NULLIF($2,''), payment_id), updated_at = now() WHERE id = $1`,
+		id, paymentID)
+	return err
+}
+
 func (r *Orders) UpdateStatus(ctx context.Context, id int64, status string, assignedTo string) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE orders SET status=$2, assigned_to=$3, updated_at=now() WHERE id=$1`,

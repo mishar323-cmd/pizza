@@ -601,6 +601,10 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       setPaying(true);
       setPayError('');
       try {
+        // Record the order first (DB + Telegram) so an online order is never
+        // lost even if the customer abandons the payment page. The webhook then
+        // marks it paid.
+        const created = await onConfirm(orderData);
         const desc = `Заказ Дело в пицце: ${items.map(i => `${i.name}×${i.qty}`).join(', ')}`;
         const resp = await fetch('/api/create-payment', {
           method: 'POST',
@@ -612,6 +616,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
             phone: phone.trim(),
             items: items.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
             promoCode: appliedCode,
+            orderId: created?.id,
           }),
         });
         const data = await resp.json();

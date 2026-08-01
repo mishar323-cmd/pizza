@@ -66,6 +66,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", handlers.Health)
 	mux.HandleFunc("POST /api/create-payment", handlers.CreatePayment(yk))
+	mux.HandleFunc("POST /api/yookassa/webhook", handlers.YooKassaWebhook(yk, orders))
 	mux.HandleFunc("POST /api/notify-telegram", handlers.NotifyTelegram(tg))
 	mux.HandleFunc("POST /api/orders", handlers.CreateOrder(orderDeps))
 	mux.HandleFunc("POST /api/iiko/order", handlers.IikoOrder(ik))

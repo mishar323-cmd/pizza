@@ -45,6 +45,9 @@ type CreatePaymentRequest struct {
 	// PromoCode is informational — the discount is already reflected in Amount
 	// by the frontend. Accepted here so strict JSON decoding doesn't 400.
 	PromoCode string `json:"promoCode"`
+	// OrderID links this payment to our order; echoed back in the webhook via
+	// YooKassa payment metadata so we can mark the order paid.
+	OrderID int64 `json:"orderId"`
 }
 
 func (c *Client) CreatePayment(ctx context.Context, req CreatePaymentRequest) ([]byte, int, error) {
@@ -96,6 +99,10 @@ func (c *Client) CreatePayment(ctx context.Context, req CreatePaymentRequest) ([
 		},
 	}
 
+	if req.OrderID > 0 {
+		payload["metadata"] = map[string]any{"order_id": strconv.FormatInt(req.OrderID, 10)}
+	}
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, 0, err
@@ -116,6 +123,45 @@ func (c *Client) CreatePayment(ctx context.Context, req CreatePaymentRequest) ([
 	defer resp.Body.Close()
 	data, err := io.ReadAll(resp.Body)
 	return data, resp.StatusCode, err
+}
+
+type PaymentInfo struct {
+	ID      string
+	Status  string
+	Paid    bool
+	OrderID int64
+}
+
+// GetPayment fetches a payment from YooKassa to authoritatively confirm its
+// status (webhook bodies are untrusted — we re-fetch before marking paid).
+func (c *Client) GetPayment(ctx context.Context, id string) (*PaymentInfo, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/payments/"+id, nil)
+	if err != nil {
+		return nil, err
+	}
+	httpReq.SetBasicAuth(c.shopID, c.secret)
+	resp, err := c.http.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("yookassa get payment %d: %s", resp.StatusCode, truncate(string(data), 200))
+	}
+	var raw struct {
+		ID       string `json:"id"`
+		Status   string `json:"status"`
+		Paid     bool   `json:"paid"`
+		Metadata struct {
+			OrderID string `json:"order_id"`
+		} `json:"metadata"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+	oid, _ := strconv.ParseInt(raw.Metadata.OrderID, 10, 64)
+	return &PaymentInfo{ID: raw.ID, Status: raw.Status, Paid: raw.Paid, OrderID: oid}, nil
 }
 
 func idempotenceKey() string {

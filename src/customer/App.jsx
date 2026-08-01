@@ -275,27 +275,34 @@ function App() {
         total={total}
         profile={profileState.profile}
         addresses={profileState.profile.addresses}
-        onConfirm={(data) => {
+        onConfirm={async (data) => {
           const delivery = data.receiveMethod === 'pickup' ? 0 : (total >= 1000 ? 0 : 150);
-          const subtotalWithDelivery = total + delivery;
           const promoDiscount = data.promoDiscount || 0;
-          const grandTotal = Math.max(0, subtotalWithDelivery - promoDiscount);
-          profileState.placeOrder(cart, grandTotal, data.address);
-          fetch('/api/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...data,
-              items: cart.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
-              total: grandTotal,
-              delivery,
-              ...readUtm(),
-            }),
-          }).catch(() => {});
-          setCart([]);
-          setCheckoutOpen(false);
-          showToast('Заказ оформлен!');
-          // STUB: авто-открытие профиля отключено до SMS-авторизации
+          const grandTotal = Math.max(0, total + delivery - promoDiscount);
+          let created = null;
+          try {
+            const res = await fetch('/api/orders', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...data,
+                items: cart.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+                total: grandTotal,
+                delivery,
+                ...readUtm(),
+              }),
+            });
+            created = await res.json();
+            profileState.placeOrder(cart, grandTotal, data.address);
+          } catch {}
+          // Online payment keeps the checkout open and redirects to YooKassa;
+          // only clear/close the cart for pay-on-delivery.
+          if (data.payMethod !== 'online') {
+            setCart([]);
+            setCheckoutOpen(false);
+            showToast('Заказ оформлен!');
+          }
+          return created;
         }}
       />
       <ToastStack toasts={toasts}/>
