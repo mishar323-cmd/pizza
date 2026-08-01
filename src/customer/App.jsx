@@ -276,7 +276,9 @@ function App() {
         profile={profileState.profile}
         addresses={profileState.profile.addresses}
         onConfirm={async (data) => {
-          const delivery = data.receiveMethod === 'pickup' ? 0 : (total >= 1000 ? 0 : 150);
+          const delivery = typeof data.delivery === 'number'
+            ? data.delivery
+            : (data.receiveMethod === 'pickup' ? 0 : (total >= 1000 ? 0 : 150));
           const promoDiscount = data.promoDiscount || 0;
           const grandTotal = Math.max(0, total + delivery - promoDiscount);
           let created = null;

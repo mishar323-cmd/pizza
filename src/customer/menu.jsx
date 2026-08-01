@@ -532,10 +532,37 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
     }
   }, [open]);
 
+  // Delivery-zone quote: geocode the address → zone → price (debounced).
+  const [quote, setQuote] = React.useState(null);
+  const [quoteLoading, setQuoteLoading] = React.useState(false);
+  React.useEffect(() => {
+    const pickup = receiveMethod === 'pickup';
+    if (!open || pickup) { setQuote(null); setQuoteLoading(false); return; }
+    const addr = (pickedAddr === '__custom__'
+      ? customAddr
+      : (addresses || []).find(a => a.id === pickedAddr)?.text || customAddr || '').trim();
+    if (addr.length < 6) { setQuote(null); setQuoteLoading(false); return; }
+    setQuoteLoading(true);
+    const t = setTimeout(() => {
+      fetch('/api/delivery/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addr, subtotal: total }),
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then(q => setQuote(q))
+        .catch(() => setQuote(null))
+        .finally(() => setQuoteLoading(false));
+    }, 600);
+    return () => clearTimeout(t);
+  }, [open, receiveMethod, pickedAddr, customAddr, total, addresses]);
+
   if (!open) return null;
 
   const isPickup = receiveMethod === 'pickup';
-  const delivery = isPickup ? 0 : (total >= free ? 0 : 150);
+  const outOfZone = !isPickup && quote && quote.found && quote.inZone === false;
+  const zonePrice = (!isPickup && quote && quote.inZone) ? quote.deliveryPrice : null;
+  const delivery = isPickup ? 0 : (zonePrice != null ? zonePrice : (total >= free ? 0 : 150));
   const subtotalWithDelivery = total + delivery;
   const grandTotal = Math.max(0, subtotalWithDelivery - promoDiscount);
 
@@ -580,7 +607,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       ? customAddr
       : (addresses || []).find(a => a.id === pickedAddr)?.text || customAddr;
 
-  const canSubmit = name.trim() && phone.trim() && (isPickup || resolvedAddr.trim());
+  const canSubmit = name.trim() && phone.trim() && (isPickup || (resolvedAddr.trim() && !outOfZone && !quoteLoading));
 
   const handleSubmit = async () => {
     if (!canSubmit || paying) return;
@@ -595,6 +622,8 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       deliveryTime: timeMode === 'exact' ? pickedTime : 'asap',
       promoCode: appliedCode,
       promoDiscount: promoState === 'ok' ? promoDiscount : 0,
+      delivery,
+      zone: (quote && quote.inZone && quote.zone) ? quote.zone.name : '',
     };
 
     if (payMethod === 'online') {
@@ -728,6 +757,23 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
               </button>
               {pickedAddr === '__custom__' && (
                 <input className="co-input" placeholder="Улица, дом, квартира" value={customAddr} onChange={e => setCustomAddr(e.target.value)} autoFocus/>
+              )}
+              {!isPickup && (quoteLoading || quote) && (
+                <div style={{
+                  marginTop: 8, fontSize: 13, padding: '9px 12px', borderRadius: 10, lineHeight: 1.35,
+                  background: quoteLoading ? '#f4f4f4' : (outOfZone || (quote && !quote.found)) ? '#fdf1f1' : '#f0faf3',
+                  color: quoteLoading ? '#888' : (outOfZone || (quote && !quote.found)) ? '#b42318' : '#1a7f37',
+                }}>
+                  {quoteLoading
+                    ? 'Проверяем адрес…'
+                    : (quote && !quote.found)
+                      ? (quote.message || 'Адрес не найден — проверьте написание')
+                      : outOfZone
+                        ? (quote.message || 'Вне зоны доставки — доступен только самовывоз')
+                        : (quote && quote.inZone)
+                          ? `${quote.zone?.name || 'Зона доставки'} · доставка ${quote.deliveryPrice === 0 ? 'бесплатно' : quote.deliveryPrice + ' ₽'}${quote.zone?.eta ? ` · ~${quote.zone.eta} мин` : ''}`
+                          : ''}
+                </div>
               )}
             </div>
           )}
