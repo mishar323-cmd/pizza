@@ -14,6 +14,8 @@ type Config struct {
 	YooKassaSecret  string
 	TGBotToken      string
 	TGChatID        string
+	TGApiBase       string
+	TGRelaySecret   string
 	Port            string
 	AllowOrigin     string
 	DatabaseURL     string
@@ -33,6 +35,8 @@ func Load() *Config {
 		YooKassaSecret:  os.Getenv("YOOKASSA_SECRET"),
 		TGBotToken:      os.Getenv("TG_BOT_TOKEN"),
 		TGChatID:        os.Getenv("TG_CHAT_ID"),
+		TGApiBase:       os.Getenv("TG_API_BASE"),
+		TGRelaySecret:   os.Getenv("TG_RELAY_SECRET"),
 		Port:            getenvDefault("PORT", "8080"),
 		AllowOrigin:     os.Getenv("ALLOW_ORIGIN"),
 		DatabaseURL:     os.Getenv("DATABASE_URL"),

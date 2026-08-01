@@ -53,7 +53,7 @@ func main() {
 	seedAdmin(ctx, admins, cfg)
 
 	yk := yookassa.NewClient(cfg.YooKassaShopID, cfg.YooKassaSecret)
-	tg := telegram.NewClient(cfg.TGBotToken, cfg.TGChatID)
+	tg := telegram.NewClient(cfg.TGBotToken, cfg.TGChatID, cfg.TGApiBase, cfg.TGRelaySecret)
 	ik := iiko.NewClient()
 
 	audit := repo.NewAudit(pool)

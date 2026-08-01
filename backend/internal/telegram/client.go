@@ -13,16 +13,23 @@ import (
 )
 
 type Client struct {
-	token  string
-	chatID string
-	http   *http.Client
+	token       string
+	chatID      string
+	apiBase     string // e.g. https://api.telegram.org, or a Cloudflare Worker relay
+	relaySecret string // optional shared secret sent to the relay
+	http        *http.Client
 }
 
-func NewClient(token, chatID string) *Client {
+func NewClient(token, chatID, apiBase, relaySecret string) *Client {
+	if apiBase == "" {
+		apiBase = "https://api.telegram.org"
+	}
 	return &Client{
-		token:  token,
-		chatID: chatID,
-		http:   &http.Client{Timeout: 10 * time.Second},
+		token:       token,
+		chatID:      chatID,
+		apiBase:     apiBase,
+		relaySecret: relaySecret,
+		http:        &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -100,12 +107,15 @@ func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
 	if err != nil {
 		return err
 	}
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", c.token)
+	url := fmt.Sprintf("%s/bot%s/sendMessage", c.apiBase, c.token)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if c.relaySecret != "" {
+		req.Header.Set("X-Relay-Secret", c.relaySecret)
+	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
