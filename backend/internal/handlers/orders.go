@@ -31,11 +31,13 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 			Delivery      float64          `json:"delivery"`
 			PaymentID     string           `json:"paymentId"`
 			PromoCode     string           `json:"promoCode"`
+			PromoDiscount float64          `json:"promoDiscount"` // клиентское превью, сервер пересчитывает сам
 			UtmSource     string           `json:"utmSource"`
 			UtmMedium     string           `json:"utmMedium"`
 			UtmCampaign   string           `json:"utmCampaign"`
 		}
 		if err := decodeJSON(w, r, &req); err != nil {
+			log.Printf("order decode: %v", err)
 			writeError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
