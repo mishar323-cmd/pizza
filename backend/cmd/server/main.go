@@ -14,6 +14,7 @@ import (
 	"pizza-backend/internal/config"
 	"pizza-backend/internal/db"
 	"pizza-backend/internal/handlers"
+	"pizza-backend/internal/geo"
 	"pizza-backend/internal/iiko"
 	"pizza-backend/internal/repo"
 	"pizza-backend/internal/telegram"
@@ -55,6 +56,8 @@ func main() {
 	yk := yookassa.NewClient(cfg.YooKassaShopID, cfg.YooKassaSecret)
 	tg := telegram.NewClient(cfg.TGBotToken, cfg.TGChatID, cfg.TGApiBase, cfg.TGRelaySecret)
 	ik := iiko.NewClient()
+	geocoder := geo.NewGeocoder(cfg.YandexGeocoderKey)
+	deliveryOrigin := geo.Point{Lat: 55.767003, Lon: 37.236615} // пиццерия, Глухово
 
 	audit := repo.NewAudit(pool)
 	adminDeps := &handlers.AdminDeps{
@@ -72,6 +75,7 @@ func main() {
 	mux.HandleFunc("POST /api/iiko/order", handlers.IikoOrder(ik))
 	mux.HandleFunc("POST /api/promo/validate", handlers.ValidatePromo(promoDeps))
 	mux.HandleFunc("GET /api/menu", handlers.PublicMenu(settings))
+	mux.HandleFunc("POST /api/delivery/quote", handlers.DeliveryQuote(geocoder, settings, deliveryOrigin, 10))
 	mux.HandleFunc("GET /api/uploads/{name}", handlers.ServeUpload(cfg.UploadDir))
 
 	mux.HandleFunc("POST /api/admin/login", handlers.AdminLogin(adminDeps))

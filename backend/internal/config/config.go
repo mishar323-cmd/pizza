@@ -24,6 +24,7 @@ type Config struct {
 	SeedAdminPass   string
 	SeedAdminName   string
 	UploadDir       string
+	YandexGeocoderKey string
 }
 
 func Load() *Config {
@@ -44,6 +45,7 @@ func Load() *Config {
 		SeedAdminPass:   os.Getenv("ADMIN_PASSWORD"),
 		SeedAdminName:   getenvDefault("ADMIN_NAME", "Администратор"),
 		UploadDir:       getenvDefault("UPLOAD_DIR", "/data/uploads"),
+		YandexGeocoderKey: getenvDefault("YANDEX_GEOCODER_KEY", "377a4a65-0532-44a8-9ff7-d6877c155757"),
 	}
 
 	if cfg.DatabaseURL == "" {
