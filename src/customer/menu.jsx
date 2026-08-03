@@ -506,6 +506,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       const fav = (profile.addresses || []).find(a => a.favorite) || (profile.addresses || [])[0];
       setPickedAddr(fav ? fav.id : '__custom__');
       setCustomAddr('');
+      setTried(false);
       setTimeMode('asap');
       setPickedTime('');
     }
@@ -518,6 +519,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
 
   const [paying, setPaying] = React.useState(false);
   const [payError, setPayError] = React.useState('');
+  const [tried, setTried] = React.useState(false); // показать ошибки обяз. полей после попытки
 
   const [promoCode, setPromoCode] = React.useState('');
   const [promoState, setPromoState] = React.useState('idle'); // idle | checking | ok | error
@@ -608,10 +610,14 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       ? customAddr
       : (addresses || []).find(a => a.id === pickedAddr)?.text || customAddr;
 
-  const canSubmit = name.trim() && phone.trim() && (isPickup || (resolvedAddr.trim() && !outOfZone && !quoteLoading));
+  const nameValid = name.trim().length >= 2;
+  const phoneValid = phone.replace(/\D/g, '').length >= 10;
+  const addrValid = isPickup || (resolvedAddr.trim().length >= 5 && !outOfZone && !quoteLoading);
+  const canSubmit = nameValid && phoneValid && addrValid;
 
   const handleSubmit = async () => {
-    if (!canSubmit || paying) return;
+    if (paying) return;
+    if (!canSubmit) { setTried(true); return; }
     const appliedCode = promoState === 'ok' ? promoCode.trim().toUpperCase() : '';
     const orderData = {
       name: name.trim(),
@@ -734,15 +740,15 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
 
           {/* Contact */}
           <div className="co-section">
-            <div className="co-label">Контакты</div>
-            <input className="co-input" placeholder="Имя" value={name} onChange={e => setName(e.target.value)}/>
-            <input className="co-input" placeholder="Телефон" type="tel" value={phone} onChange={e => setPhone(e.target.value)}/>
+            <div className="co-label">Контакты <span style={{color:'#DC2828'}}>*</span></div>
+            <input className="co-input" placeholder="Имя*" value={name} onChange={e => setName(e.target.value)} style={tried && !nameValid ? {borderColor:'#DC2828', borderWidth:1.5} : undefined}/>
+            <input className="co-input" placeholder="Телефон*" type="tel" inputMode="tel" value={phone} onChange={e => setPhone(e.target.value)} style={tried && !phoneValid ? {borderColor:'#DC2828', borderWidth:1.5} : undefined}/>
           </div>
 
           {/* Address — only for delivery */}
           {!isPickup && (
             <div className="co-section">
-              <div className="co-label">Адрес доставки</div>
+              <div className="co-label">Адрес доставки <span style={{color:'#DC2828'}}>*</span></div>
               {(addresses || []).map(a => (
                 <button key={a.id} className={`addr-pick ${pickedAddr === a.id ? 'on' : ''}`} onClick={() => setPickedAddr(a.id)}>
                   <span className="radio"/>
@@ -757,7 +763,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
                 <span><strong>Другой адрес</strong></span>
               </button>
               {pickedAddr === '__custom__' && (
-                <input className="co-input" placeholder="Улица, дом, квартира" value={customAddr} onChange={e => setCustomAddr(e.target.value)} autoFocus/>
+                <input className="co-input" placeholder="Улица, дом, квартира*" value={customAddr} onChange={e => setCustomAddr(e.target.value)} autoFocus style={tried && !addrValid ? {borderColor:'#DC2828', borderWidth:1.5} : undefined}/>
               )}
               {!isPickup && (quoteLoading || quote) && (
                 <div style={{
@@ -837,10 +843,15 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
             <span style={{fontFamily:'Unbounded', fontWeight:700}}>{grandTotal} ₽</span>
           </div>
           {payError && <div style={{color:'var(--primary)', fontSize:13, marginBottom:8, textAlign:'center'}}>{payError}</div>}
+          {tried && !canSubmit && (
+            <div style={{color:'#DC2828', fontSize:13, marginBottom:8, textAlign:'center'}}>
+              {!nameValid ? 'Укажите имя' : !phoneValid ? 'Укажите корректный номер телефона' : outOfZone ? 'Адрес вне зоны доставки — доступен только самовывоз' : 'Укажите адрес доставки'}
+            </div>
+          )}
           <button
             className="btn btn-primary checkout"
-            disabled={!canSubmit || paying}
-            style={(!canSubmit || paying) ? {opacity: 0.6, cursor:'not-allowed'} : undefined}
+            disabled={paying}
+            style={(!canSubmit || paying) ? {opacity: 0.6} : undefined}
             onClick={handleSubmit}
           >
             {paying ? 'Переход к оплате…' : payMethod === 'online' ? `Оплатить ${grandTotal} ₽` : 'Оформить за 35 минут'}

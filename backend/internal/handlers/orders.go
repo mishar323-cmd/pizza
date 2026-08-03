@@ -15,6 +15,16 @@ type OrdersDeps struct {
 	Telegram *telegram.Client
 }
 
+func phoneDigits(s string) int {
+	n := 0
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			n++
+		}
+	}
+	return n
+}
+
 func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
@@ -41,10 +51,6 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
-		if req.Name == "" || req.Phone == "" || len(req.Items) == 0 {
-			writeError(w, http.StatusBadRequest, "missing required fields")
-			return
-		}
 		if req.ReceiveMethod == "" {
 			req.ReceiveMethod = "delivery"
 		}
@@ -53,6 +59,18 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 		}
 		if req.DeliveryTime == "" {
 			req.DeliveryTime = "asap"
+		}
+		if req.Name == "" || len(req.Items) == 0 {
+			writeError(w, http.StatusBadRequest, "не заполнены обязательные поля")
+			return
+		}
+		if phoneDigits(req.Phone) < 10 {
+			writeError(w, http.StatusBadRequest, "укажите корректный номер телефона")
+			return
+		}
+		if req.ReceiveMethod != "pickup" && req.Address == "" {
+			writeError(w, http.StatusBadRequest, "укажите адрес доставки")
+			return
 		}
 
 		var (
