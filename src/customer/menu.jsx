@@ -504,7 +504,8 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       setName(profile.name || '');
       setPhone(profile.phone || '');
       const fav = (profile.addresses || []).find(a => a.favorite) || (profile.addresses || [])[0];
-      if (fav) setPickedAddr(fav.id);
+      setPickedAddr(fav ? fav.id : '__custom__');
+      setCustomAddr('');
       setTimeMode('asap');
       setPickedTime('');
     }

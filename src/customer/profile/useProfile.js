@@ -16,16 +16,13 @@ export function getLevel(total) {
   return { current: cur, next, progress: next ? Math.min(100, Math.round(((total - cur.min) / (next.min - cur.min)) * 100)) : 100 };
 }
 
-const PROFILE_KEY = 'dvp_profile_v1';
+const PROFILE_KEY = 'dvp_profile_v2'; // v2: сброс фейковых демо-дефолтов (v1 хранил «Александр» + телефон пиццерии)
 const DEFAULT_PROFILE = {
-  name: 'Александр',
-  phone: '+7 915 488-94-19',
+  name: '',
+  phone: '',
   orders: [],
   pizzaCount: 0, // сквозной счётчик пицц для механики 8-я бесплатно
-  addresses: [
-    { id: 'home', label: 'Дом',   text: 'Красногорск, ул. Глуховская 12, кв. 45',   favorite: true },
-    { id: 'work', label: 'Работа', text: 'Красногорск, ул. Ленина 33, оф. 210',     favorite: false },
-  ],
+  addresses: [], // никаких демо-адресов — клиент вводит свой
 };
 
 function loadProfile() {
