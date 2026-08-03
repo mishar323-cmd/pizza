@@ -15,6 +15,18 @@ type OrdersDeps struct {
 	Telegram *telegram.Client
 }
 
+func buildTelegramOrder(o repo.Order) telegram.Order {
+	items := make([]telegram.Item, 0, len(o.Items))
+	for _, it := range o.Items {
+		items = append(items, telegram.Item{Name: it.Name, Qty: it.Qty, Price: it.Price})
+	}
+	return telegram.Order{
+		Name: o.CustomerName, Phone: o.CustomerPhone, Address: o.Address,
+		Comment: o.Comment, ReceiveMethod: o.ReceiveMethod, PayMethod: o.PayMethod,
+		DeliveryTime: o.DeliveryTime, Items: items, Total: o.Total,
+	}
+}
+
 func phoneDigits(s string) int {
 	n := 0
 	for _, r := range s {
@@ -124,22 +136,17 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 			}
 		}
 
-		go func(o repo.Order) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*1e9)
-			defer cancel()
-			tgItems := make([]telegram.Item, 0, len(o.Items))
-			for _, it := range o.Items {
-				tgItems = append(tgItems, telegram.Item{Name: it.Name, Qty: it.Qty, Price: it.Price})
-			}
-			err := d.Telegram.SendOrderNotification(ctx, telegram.Order{
-				Name: o.CustomerName, Phone: o.CustomerPhone, Address: o.Address,
-				Comment: o.Comment, ReceiveMethod: o.ReceiveMethod, PayMethod: o.PayMethod,
-				DeliveryTime: o.DeliveryTime, Items: tgItems, Total: o.Total,
-			})
-			if err != nil {
-				log.Printf("telegram notify failed: %v", err)
-			}
-		}(*o)
+		// Notify immediately only for pay-on-delivery orders. Online orders are
+		// notified after the payment webhook confirms they are actually paid.
+		if o.PayMethod != "online" && d.Telegram != nil {
+			go func(o repo.Order) {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*1e9)
+				defer cancel()
+				if err := d.Telegram.SendOrderNotification(ctx, buildTelegramOrder(o)); err != nil {
+					log.Printf("telegram notify failed: %v", err)
+				}
+			}(*o)
+		}
 
 		writeJSON(w, http.StatusCreated, map[string]any{
 			"id":     o.ID,

@@ -92,11 +92,35 @@ func (r *Orders) List(ctx context.Context, limit int) ([]Order, error) {
 	return out, rows.Err()
 }
 
-func (r *Orders) MarkPaid(ctx context.Context, id int64, paymentID string) error {
-	_, err := r.pool.Exec(ctx,
-		`UPDATE orders SET paid = true, payment_id = COALESCE(NULLIF($2,''), payment_id), updated_at = now() WHERE id = $1`,
+func (r *Orders) GetByID(ctx context.Context, id int64) (*Order, error) {
+	var o Order
+	var itemsRaw []byte
+	err := r.pool.QueryRow(ctx, `
+		SELECT id, number, customer_name, customer_phone, COALESCE(address, ''), COALESCE(zone, ''), COALESCE(comment, ''),
+			receive_method, pay_method, delivery_time, items, total, delivery, status, eta_minutes, COALESCE(assigned_to, ''), COALESCE(payment_id, ''), created_at, updated_at
+		FROM orders WHERE id = $1`, id).Scan(
+		&o.ID, &o.Number, &o.CustomerName, &o.CustomerPhone, &o.Address, &o.Zone, &o.Comment,
+		&o.ReceiveMethod, &o.PayMethod, &o.DeliveryTime, &itemsRaw, &o.Total, &o.Delivery,
+		&o.Status, &o.EtaMinutes, &o.AssignedTo, &o.PaymentID, &o.CreatedAt, &o.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(itemsRaw, &o.Items)
+	return &o, nil
+}
+
+// MarkPaid flags the order paid and reports whether this call was the one that
+// changed it (false if it was already paid — lets the webhook avoid duplicate
+// notifications on YooKassa retries).
+func (r *Orders) MarkPaid(ctx context.Context, id int64, paymentID string) (bool, error) {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE orders SET paid = true, payment_id = COALESCE(NULLIF($2,''), payment_id), updated_at = now() WHERE id = $1 AND paid = false`,
 		id, paymentID)
-	return err
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
 }
 
 func (r *Orders) UpdateStatus(ctx context.Context, id int64, status string, assignedTo string) error {
