@@ -164,6 +164,47 @@ func (c *Client) GetPayment(ctx context.Context, id string) (*PaymentInfo, error
 	return &PaymentInfo{ID: raw.ID, Status: raw.Status, Paid: raw.Paid, OrderID: oid}, nil
 }
 
+// ListRecentPayments returns recent payments (basic-auth works for this, unlike
+// the webhooks API), so the backend can reconcile paid orders by polling.
+func (c *Client) ListRecentPayments(ctx context.Context, limit int) ([]PaymentInfo, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/payments?limit="+strconv.Itoa(limit), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.SetBasicAuth(c.shopID, c.secret)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("yookassa list %d: %s", resp.StatusCode, truncate(string(data), 200))
+	}
+	var raw struct {
+		Items []struct {
+			ID       string `json:"id"`
+			Status   string `json:"status"`
+			Paid     bool   `json:"paid"`
+			Metadata struct {
+				OrderID string `json:"order_id"`
+			} `json:"metadata"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+	out := make([]PaymentInfo, 0, len(raw.Items))
+	for _, it := range raw.Items {
+		oid, _ := strconv.ParseInt(it.Metadata.OrderID, 10, 64)
+		out = append(out, PaymentInfo{ID: it.ID, Status: it.Status, Paid: it.Paid, OrderID: oid})
+	}
+	return out, nil
+}
+
 func idempotenceKey() string {
 	return strconv.FormatInt(time.Now().UnixNano(), 36) + strconv.FormatInt(rand.Int63(), 36)
 }

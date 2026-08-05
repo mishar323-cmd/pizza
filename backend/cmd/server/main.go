@@ -100,6 +100,18 @@ func main() {
 
 	handler := recoverPanic(withLogging(withCORS(cfg.AllowOrigin, mux)))
 
+	// Reconcile paid online orders every minute (webhook-free fallback): mark
+	// succeeded YooKassa payments paid and send the Telegram notification.
+	go func() {
+		t := time.NewTicker(60 * time.Second)
+		defer t.Stop()
+		for range t.C {
+			rctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+			handlers.ReconcilePaidOrders(rctx, yk, orders, tg)
+			cancel()
+		}
+	}()
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           handler,
