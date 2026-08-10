@@ -79,7 +79,7 @@ func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
 	orderID := strings.ToUpper(strconv.FormatInt(time.Now().UnixMilli(), 36))
 
 	var lines []string
-	lines = append(lines, fmt.Sprintf("🍕 *Новый заказ #%s*", orderID))
+	lines = append(lines, fmt.Sprintf("🍕 Новый заказ #%s", orderID))
 	lines = append(lines, "")
 	lines = append(lines, fmt.Sprintf("👤 %s | %s", o.Name, o.Phone))
 	lines = append(lines, fmt.Sprintf("%s | %s", method, pay))
@@ -91,17 +91,16 @@ func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
 		lines = append(lines, fmt.Sprintf("💬 %s", o.Comment))
 	}
 	lines = append(lines, "")
-	lines = append(lines, "*Состав:*")
+	lines = append(lines, "Состав:")
 	lines = append(lines, strings.TrimRight(itemsB.String(), "\n"))
 	lines = append(lines, "")
-	lines = append(lines, fmt.Sprintf("*Итого: %.0f ₽*", o.Total))
+	lines = append(lines, fmt.Sprintf("Итого: %.0f ₽", o.Total))
 
 	text := strings.Join(lines, "\n")
 
 	payload := map[string]any{
-		"chat_id":    c.chatID,
-		"text":       text,
-		"parse_mode": "Markdown",
+		"chat_id": c.chatID,
+		"text":    text,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
