@@ -288,7 +288,10 @@ function App() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 ...data,
-                items: cart.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+                items: cart.map(i => ({
+                  name: i.name, qty: i.qty, price: i.price,
+                  size: i.sizeLabel || (i.sizeId ? ((SIZES.find(s => s.id === i.sizeId) || {}).label || '') : ''),
+                })),
                 total: grandTotal,
                 delivery,
                 ...readUtm(),

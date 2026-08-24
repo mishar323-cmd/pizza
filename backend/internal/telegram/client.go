@@ -39,6 +39,7 @@ type Item struct {
 	Name  string  `json:"name"`
 	Qty   int     `json:"qty"`
 	Price float64 `json:"price"`
+	Size  string  `json:"size,omitempty"`
 }
 
 type Order struct {
@@ -51,6 +52,8 @@ type Order struct {
 	DeliveryTime  string  `json:"deliveryTime"`
 	Items         []Item  `json:"items"`
 	Total         float64 `json:"total"`
+	PromoCode     string  `json:"promoCode,omitempty"`
+	PromoDiscount float64 `json:"promoDiscount,omitempty"`
 }
 
 func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
@@ -73,7 +76,11 @@ func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
 
 	var itemsB strings.Builder
 	for _, it := range o.Items {
-		fmt.Fprintf(&itemsB, "  • %s ×%d — %.0f ₽\n", it.Name, it.Qty, it.Price*float64(it.Qty))
+		size := ""
+		if it.Size != "" {
+			size = " (" + it.Size + ")"
+		}
+		fmt.Fprintf(&itemsB, "  • %s%s ×%d — %.0f ₽\n", it.Name, size, it.Qty, it.Price*float64(it.Qty))
 	}
 
 	orderID := strings.ToUpper(strconv.FormatInt(time.Now().UnixMilli(), 36))
@@ -94,6 +101,13 @@ func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
 	lines = append(lines, "Состав:")
 	lines = append(lines, strings.TrimRight(itemsB.String(), "\n"))
 	lines = append(lines, "")
+	if o.PromoCode != "" {
+		if o.PromoDiscount > 0 {
+			lines = append(lines, fmt.Sprintf("🎟 Промокод %s (−%.0f ₽)", o.PromoCode, o.PromoDiscount))
+		} else {
+			lines = append(lines, fmt.Sprintf("🎟 Промокод %s", o.PromoCode))
+		}
+	}
 	lines = append(lines, fmt.Sprintf("Итого: %.0f ₽", o.Total))
 
 	text := strings.Join(lines, "\n")

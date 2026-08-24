@@ -12,6 +12,7 @@ type OrderItem struct {
 	Name  string  `json:"name"`
 	Qty   int     `json:"qty"`
 	Price float64 `json:"price"`
+	Size  string  `json:"size,omitempty"`
 }
 
 type Order struct {
@@ -97,11 +98,11 @@ func (r *Orders) GetByID(ctx context.Context, id int64) (*Order, error) {
 	var itemsRaw []byte
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, number, customer_name, customer_phone, COALESCE(address, ''), COALESCE(zone, ''), COALESCE(comment, ''),
-			receive_method, pay_method, delivery_time, items, total, delivery, status, eta_minutes, COALESCE(assigned_to, ''), COALESCE(payment_id, ''), created_at, updated_at
+			receive_method, pay_method, delivery_time, items, total, delivery, status, eta_minutes, COALESCE(assigned_to, ''), COALESCE(payment_id, ''), COALESCE(promo_code, ''), promo_discount, created_at, updated_at
 		FROM orders WHERE id = $1`, id).Scan(
 		&o.ID, &o.Number, &o.CustomerName, &o.CustomerPhone, &o.Address, &o.Zone, &o.Comment,
 		&o.ReceiveMethod, &o.PayMethod, &o.DeliveryTime, &itemsRaw, &o.Total, &o.Delivery,
-		&o.Status, &o.EtaMinutes, &o.AssignedTo, &o.PaymentID, &o.CreatedAt, &o.UpdatedAt,
+		&o.Status, &o.EtaMinutes, &o.AssignedTo, &o.PaymentID, &o.PromoCode, &o.PromoDiscount, &o.CreatedAt, &o.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err

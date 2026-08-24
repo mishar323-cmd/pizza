@@ -18,12 +18,13 @@ type OrdersDeps struct {
 func buildTelegramOrder(o repo.Order) telegram.Order {
 	items := make([]telegram.Item, 0, len(o.Items))
 	for _, it := range o.Items {
-		items = append(items, telegram.Item{Name: it.Name, Qty: it.Qty, Price: it.Price})
+		items = append(items, telegram.Item{Name: it.Name, Qty: it.Qty, Price: it.Price, Size: it.Size})
 	}
 	return telegram.Order{
 		Name: o.CustomerName, Phone: o.CustomerPhone, Address: o.Address,
 		Comment: o.Comment, ReceiveMethod: o.ReceiveMethod, PayMethod: o.PayMethod,
 		DeliveryTime: o.DeliveryTime, Items: items, Total: o.Total,
+		PromoCode: o.PromoCode, PromoDiscount: o.PromoDiscount,
 	}
 }
 
