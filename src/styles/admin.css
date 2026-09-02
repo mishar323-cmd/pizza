@@ -745,7 +745,7 @@ body.admin {
   }
   .admin-sidebar.open { transform: translateX(0); }
   .admin-main { padding: 70px 18px 40px; }
-  .mobile-topbar {
+  .admin-shell .mobile-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
