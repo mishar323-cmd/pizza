@@ -57,16 +57,20 @@ function AdminLayout({ session, onLogout, store, setStore }) {
   return (
     <div className="admin-shell">
       {session.role === 'super' && (
-        <div style={{ position: 'fixed', top: 14, right: 18, zIndex: 50 }}>
+        <div className="admin-bell-fixed">
           <NotificationsBell onOpenJournal={() => setPage('audit')} />
         </div>
       )}
       <div className="mobile-topbar">
-        <button onClick={() => setSidebarOpen(true)} aria-label="Меню">☰</button>
         <strong style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 15 }}>Админ — {pages.find(p => p.id === page)?.label}</strong>
+        <div className="mobile-topbar-actions">
+          {session.role === 'super' && <NotificationsBell onOpenJournal={() => setPage('audit')} />}
+          <button onClick={() => setSidebarOpen(true)} className="dots-btn" aria-label="Разделы">⋮</button>
+        </div>
       </div>
 
-      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`} onClick={(e) => { if (e.target.classList.contains('nav-item')) setSidebarOpen(false); }}>
+      {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`} onClick={(e) => { if (e.target.closest('.nav-item')) setSidebarOpen(false); }}>
         <div className="sidebar-brand">
           <span className="mark"/>
           <div>
