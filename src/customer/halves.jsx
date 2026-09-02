@@ -143,7 +143,6 @@ export function HalvesCard({ onOpen }) {
         <HalvesDisc left={defaultLeft} right={defaultRight} size="card"/>
       </div>
       <h3 className="pizza-name">Собери из половинок</h3>
-      <p className="pizza-desc">Две разные начинки на одной пицце — выбери любую комбинацию</p>
       <div className="pizza-meta">
         <span>2 вкуса в 1</span>
         <span className="dot"/>
@@ -235,7 +234,6 @@ export function HalvesModal({ open, onClose, onAdd }) {
 
         <div className="pdmodal-body halves-body">
           <h3>Собери из половинок</h3>
-          <p className="desc">Прокрути колесо — найдёшь нужный вкус. Половинка стоит половину цены +10%, округлено до десятков.</p>
 
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--ink-soft)', marginTop: 14 }}>Размер</div>
           <div className="size-toggle">
