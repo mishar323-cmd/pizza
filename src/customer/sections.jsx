@@ -175,7 +175,7 @@ export function Footer() {
           <div>
             <h5>Документы</h5>
             <ul>
-              <li><a href="/police">Политика конфиденциальности</a></li>
+              <li><a href="/policy.html" target="_blank" rel="noopener">Политика обработки персональных данных</a></li>
               <li><a href="/rekviziti">Реквизиты</a></li>
               <li><a href="#">Оферта</a></li>
               <li><a href="#">Доставка и оплата</a></li>

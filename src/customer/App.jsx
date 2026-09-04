@@ -73,6 +73,34 @@ function OrderSuccessPage({ method, time, onClose }) {
   );
 }
 
+function CookieBanner() {
+  const [show, setShow] = React.useState(false);
+  React.useEffect(() => {
+    try { if (!localStorage.getItem('dvp_cookie_consent')) setShow(true); } catch { setShow(true); }
+  }, []);
+  if (!show) return null;
+  const accept = () => {
+    try { localStorage.setItem('dvp_cookie_consent', '1'); } catch {}
+    setShow(false);
+  };
+  return (
+    <div style={{
+      position: 'fixed', left: 12, right: 12, bottom: 12, zIndex: 9000, maxWidth: 560, margin: '0 auto',
+      background: '#20201e', color: '#fff', borderRadius: 16, padding: '15px 18px',
+      boxShadow: '0 16px 48px rgba(0,0,0,.35)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
+    }}>
+      <div style={{ flex: 1, minWidth: 220, fontSize: 13.5, lineHeight: 1.45 }}>
+        Мы используем файлы cookie для работы сайта и аналитики. Продолжая, вы соглашаетесь с{' '}
+        <a href="/policy.html" target="_blank" rel="noopener" style={{ color: '#ffb84d' }}>политикой обработки персональных данных</a>.
+      </div>
+      <button onClick={accept} style={{
+        background: '#DC2828', color: '#fff', border: 'none', borderRadius: 10,
+        padding: '11px 22px', fontWeight: 600, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap',
+      }}>Принять</button>
+    </div>
+  );
+}
+
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [editMode, setEditMode] = React.useState(false);
@@ -312,6 +340,7 @@ function App() {
       />
       <ToastStack toasts={toasts}/>
       <NightOverlay force={t.forceNight}/>
+      <CookieBanner/>
     </>
   );
 }
