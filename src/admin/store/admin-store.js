@@ -74,12 +74,17 @@ async function api(method, path, body) {
 // Zones are saved debounced and strictly one request at a time: typing "15"
 // into a field must never let an older "1" land last. Status is broadcast as
 // a 'zones-save' window event: 'saving' | 'saved' | 'error'.
-const _zonesSave = { timer: null, pending: null, inflight: false, status: 'saved' };
+const _zonesSave = { timer: null, pending: null, inflight: false, status: 'saved', loadFailed: false };
 function setZonesStatus(status, error) {
   _zonesSave.status = status;
   window.dispatchEvent(new CustomEvent('zones-save', { detail: { status, error } }));
 }
 function queueZonesSave(zones) {
+  // Never overwrite real zones with the bundled demo defaults.
+  if (_zonesSave.loadFailed) {
+    setZonesStatus('error', 'зоны не загрузились с сервера — обновите страницу, изменения не сохранены');
+    return;
+  }
   _zonesSave.pending = zones;
   setZonesStatus('saving');
   clearTimeout(_zonesSave.timer);
@@ -164,7 +169,7 @@ export const AdminStore = {
     try {
       const [promos, zones, stop, cook, couriers, orders, menuData] = await Promise.all([
         api('GET', '/settings/promos').catch(() => null),
-        api('GET', '/settings/zones').catch(() => null),
+        api('GET', '/settings/zones').catch(() => { _zonesSave.loadFailed = true; return null; }),
         api('GET', '/settings/stop').catch(() => null),
         api('GET', '/settings/cook').catch(() => null),
         api('GET', '/settings/couriers').catch(() => null),
@@ -194,6 +199,7 @@ export const AdminStore = {
 
   zonesSaveState() { return _zonesSave.status; },
   retryZonesSave() { flushZonesSave(); },
+  zonesLoadFailed() { return _zonesSave.loadFailed; },
 
   // Persist settings slices. Diff against last known to avoid extra writes.
   save(next) {

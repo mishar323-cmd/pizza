@@ -51,16 +51,19 @@ export function DeliveryMap() {
       mapRef.current = map;
 
       // Largest zones first so smaller ones stay clickable on top.
-      const shapes = data.zones.map(z => {
+      const isPoly = (z) => z.polygon && z.polygon.length >= 3;
+      const size = (z) => {
+        if (!isPoly(z)) { const d = (z.radiusKm || 10) / 111 * 2; return d * d; }
+        const la = z.polygon.map(p => p[0]), lo = z.polygon.map(p => p[1]);
+        return (Math.max(...la) - Math.min(...la)) * (Math.max(...lo) - Math.min(...lo));
+      };
+      [...data.zones].sort((a, b) => size(b) - size(a)).forEach(z => {
         const props = { hintContent: z.name, balloonContent: `<b>${z.name}</b><br/>${zonePriceLine(z)}` };
         const opts = { fillColor: hexToRgba(z.color, 0.12), strokeColor: z.color || '#666', strokeWidth: 2 };
-        const geo = z.polygon && z.polygon.length >= 3
+        map.geoObjects.add(isPoly(z)
           ? new ymaps.Polygon([z.polygon], props, opts)
-          : new ymaps.Circle([origin, (z.radiusKm || 10) * 1000], props, { ...opts, strokeStyle: 'dot' });
-        return geo;
+          : new ymaps.Circle([origin, (z.radiusKm || 10) * 1000], props, { ...opts, strokeStyle: 'dot' }));
       });
-      const area = (g) => { const b = g.geometry.getBounds(); return b ? (b[1][0] - b[0][0]) * (b[1][1] - b[0][1]) : 0; };
-      shapes.sort((a, b) => area(b) - area(a)).forEach(g => map.geoObjects.add(g));
 
       map.geoObjects.add(new ymaps.Placemark(origin, {
         hintContent: 'Дело в пицце',

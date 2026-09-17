@@ -227,7 +227,9 @@ function AddressChecker() {
 }
 
 function ZonesSaveStatus() {
-  const [st, setSt] = React.useState({ status: AdminStore.zonesSaveState() });
+  const [st, setSt] = React.useState(() => AdminStore.zonesLoadFailed()
+    ? { status: 'error', error: 'зоны не загрузились с сервера — обновите страницу' }
+    : { status: AdminStore.zonesSaveState() });
   React.useEffect(() => {
     const h = (e) => setSt(e.detail);
     window.addEventListener('zones-save', h);
