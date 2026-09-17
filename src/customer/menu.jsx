@@ -245,9 +245,6 @@ function SimpleCard({ item, qty, onAdd, onMinus, sized, onOpen }) {
 
 /* ======================== Cart Drawer ======================== */
 export function CartDrawer({ open, onClose, items, addToCart, removeFromCart, total, addUpsell, addresses, onCheckout }) {
-  const free = 1000;
-  const remaining = Math.max(0, free - total);
-  const progress = Math.min(100, Math.round((total / free) * 100));
   const favAddr = (addresses || []).find(a => a.favorite) || (addresses || [])[0];
   const [pickedAddr, setPickedAddr] = React.useState(favAddr?.id);
   const [customAddr, setCustomAddr] = React.useState('');
@@ -271,14 +268,6 @@ export function CartDrawer({ open, onClose, items, addToCart, removeFromCart, to
             </div>
           ) : (
             <>
-              <div className="delivery-progress">
-                {remaining > 0 ? (
-                  <>До <strong>бесплатной доставки</strong> ещё <strong>{remaining} ₽</strong></>
-                ) : (
-                  <><Ic name="check" size={14}/> <strong>Доставка бесплатная</strong></>
-                )}
-                <div className="bar"><span style={{width: `${progress}%`}}/></div>
-              </div>
               {items.map(it => (
                 <div className="cart-item" key={it.cartKey}>
                   <div className="pic">
@@ -323,10 +312,10 @@ export function CartDrawer({ open, onClose, items, addToCart, removeFromCart, to
         {items.length > 0 && (
           <div className="drawer-foot">
             <div className="row"><span>Сумма</span><span>{total} ₽</span></div>
-            <div className="row"><span>Доставка</span><span>{total >= free ? 'бесплатно' : '150 ₽'}</span></div>
+            <div className="row"><span>Доставка</span><span style={{color:'var(--ink-mute)'}}>по зоне адреса</span></div>
             <div className="row total" style={{display:'flex', justifyContent:'space-between'}}>
-              <span>Итого</span>
-              <span>{total + (total >= free ? 0 : 150)} ₽</span>
+              <span>Итого без доставки</span>
+              <span>{total} ₽</span>
             </div>
             <div className="addr-picker">
               <small style={{color:'var(--ink-mute)', fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'.04em'}}>Доставить на</small>
@@ -468,7 +457,6 @@ export function PizzaDetail({ pizza, onClose, onAdd }) {
 
 /* ======================== Checkout Modal ======================== */
 export function CheckoutModal({ open, onClose, onConfirm, items, total, profile, addresses }) {
-  const free = 1000;
 
   const [name, setName] = React.useState('');
   const [phone, setPhone] = React.useState('');
@@ -536,6 +524,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
   }, [open]);
 
   // Delivery-zone quote: geocode the address → zone → price (debounced).
+  // quote: null | {found,inZone,...} | {error:true} when the check itself failed
   const [quote, setQuote] = React.useState(null);
   const [quoteLoading, setQuoteLoading] = React.useState(false);
   React.useEffect(() => {
@@ -546,26 +535,29 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       : (addresses || []).find(a => a.id === pickedAddr)?.text || customAddr || '').trim();
     if (addr.length < 6) { setQuote(null); setQuoteLoading(false); return; }
     setQuoteLoading(true);
+    let stale = false;
     const t = setTimeout(() => {
       fetch('/api/delivery/quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: addr, subtotal: total }),
       })
-        .then(r => (r.ok ? r.json() : null))
-        .then(q => setQuote(q))
-        .catch(() => setQuote(null))
-        .finally(() => setQuoteLoading(false));
+        .then(r => (r.ok ? r.json() : { error: true }))
+        .catch(() => ({ error: true }))
+        .then(q => { if (!stale) { setQuote(q); setQuoteLoading(false); } });
     }, 600);
-    return () => clearTimeout(t);
+    return () => { stale = true; clearTimeout(t); };
   }, [open, receiveMethod, pickedAddr, customAddr, total, addresses]);
 
   if (!open) return null;
 
   const isPickup = receiveMethod === 'pickup';
+  const quoteError = !isPickup && !!quote?.error;
+  const notFound = !isPickup && quote && !quote.error && quote.found === false;
   const outOfZone = !isPickup && quote && quote.found && quote.inZone === false;
-  const zonePrice = (!isPickup && quote && quote.inZone) ? quote.deliveryPrice : null;
-  const delivery = isPickup ? 0 : (zonePrice != null ? zonePrice : (total >= free ? 0 : 150));
+  const inZone = !isPickup && quote && quote.inZone === true;
+  // Geocoder outage must not lose orders: allow, operator confirms the fee.
+  const delivery = inZone ? quote.deliveryPrice : 0;
   const subtotalWithDelivery = total + delivery;
   const grandTotal = Math.max(0, subtotalWithDelivery - promoDiscount);
 
@@ -612,7 +604,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
 
   const nameValid = name.trim().length >= 2;
   const phoneValid = phone.replace(/\D/g, '').length >= 10;
-  const addrValid = isPickup || (resolvedAddr.trim().length >= 5 && !outOfZone && !quoteLoading);
+  const addrValid = isPickup || (resolvedAddr.trim().length >= 5 && !quoteLoading && (inZone || quoteError));
   const canSubmit = nameValid && phoneValid && addrValid;
 
   const handleSubmit = async () => {
@@ -630,7 +622,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       promoCode: appliedCode,
       promoDiscount: promoState === 'ok' ? promoDiscount : 0,
       delivery,
-      zone: (quote && quote.inZone && quote.zone) ? quote.zone.name : '',
+      zone: isPickup ? '' : inZone ? (quote.zone?.name || '') : '⚠️ адрес не проверен автоматически — уточните зону и стоимость доставки',
     };
 
     if (payMethod === 'online') {
@@ -692,7 +684,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
             ))}
             <div className="co-row co-total">
               <span>Доставка</span>
-              <span>{delivery === 0 ? 'бесплатно' : `${delivery} ₽`}</span>
+              <span>{isPickup ? 'самовывоз' : quoteError ? 'уточнит оператор' : !inZone ? '—' : delivery === 0 ? 'бесплатно' : `${delivery} ₽`}</span>
             </div>
             {promoState === 'ok' && promoDiscount > 0 && (
               <div className="co-row co-total" style={{color:'#1B8A3D'}}>
@@ -765,23 +757,29 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
               {pickedAddr === '__custom__' && (
                 <input className="co-input" placeholder="Улица, дом, квартира*" value={customAddr} onChange={e => setCustomAddr(e.target.value)} autoFocus style={tried && !addrValid ? {borderColor:'#DC2828', borderWidth:1.5} : undefined}/>
               )}
-              {!isPickup && (quoteLoading || quote) && (
-                <div style={{
-                  marginTop: 8, fontSize: 13, padding: '9px 12px', borderRadius: 10, lineHeight: 1.35,
-                  background: quoteLoading ? '#f4f4f4' : (outOfZone || (quote && !quote.found)) ? '#fdf1f1' : '#f0faf3',
-                  color: quoteLoading ? '#888' : (outOfZone || (quote && !quote.found)) ? '#b42318' : '#1a7f37',
-                }}>
-                  {quoteLoading
-                    ? 'Проверяем адрес…'
-                    : (quote && !quote.found)
-                      ? (quote.message || 'Адрес не найден — проверьте написание')
-                      : outOfZone
-                        ? (quote.message || 'Вне зоны доставки — доступен только самовывоз')
-                        : (quote && quote.inZone)
-                          ? `${quote.zone?.name || 'Зона доставки'} · доставка ${quote.deliveryPrice === 0 ? 'бесплатно' : quote.deliveryPrice + ' ₽'}${quote.zone?.eta ? ` · ~${quote.zone.eta} мин` : ''}`
-                          : ''}
-                </div>
-              )}
+              {!isPickup && (quoteLoading || quote) && (() => {
+                const bad = notFound || outOfZone;
+                const tone = quoteLoading ? ['#f4f4f4', '#888'] : bad ? ['#fdf1f1', '#b42318'] : quoteError ? ['#fff6e0', '#8a5a00'] : ['#f0faf3', '#1a7f37'];
+                return (
+                  <div style={{ marginTop: 8, fontSize: 13, padding: '9px 12px', borderRadius: 10, lineHeight: 1.4, background: tone[0], color: tone[1] }}>
+                    {quoteLoading
+                      ? 'Проверяем адрес…'
+                      : notFound
+                        ? quote.message
+                        : outOfZone
+                          ? `${quote.message}${quote.distanceKm ? ` (${quote.distanceKm} км от пиццерии)` : ''}`
+                          : quoteError
+                            ? 'Не получилось проверить адрес автоматически. Заказ оформить можно — оператор подтвердит стоимость доставки.'
+                            : `${quote.zone?.name || 'Зона доставки'} · доставка ${quote.deliveryPrice === 0 ? 'бесплатно' : quote.deliveryPrice + ' ₽'}${!quote.freeApplied && quote.freeFrom > 0 && quote.basePrice > 0 ? ` (бесплатно от ${quote.freeFrom} ₽)` : ''}${quote.zone?.eta ? ` · ~${quote.zone.eta} мин` : ''}`}
+                    {!quoteLoading && bad && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                        <button type="button" className="btn" onClick={() => setReceiveMethod('pickup')} style={{ padding: '6px 12px', fontSize: 13 }}>Заберу сам</button>
+                        <a className="btn" href="tel:+79154889419" style={{ padding: '6px 12px', fontSize: 13 }}>Позвонить нам</a>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -845,7 +843,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
           {payError && <div style={{color:'var(--primary)', fontSize:13, marginBottom:8, textAlign:'center'}}>{payError}</div>}
           {tried && !canSubmit && (
             <div style={{color:'#DC2828', fontSize:13, marginBottom:8, textAlign:'center'}}>
-              {!nameValid ? 'Укажите имя' : !phoneValid ? 'Укажите корректный номер телефона' : outOfZone ? 'Адрес вне зоны доставки — доступен только самовывоз' : 'Укажите адрес доставки'}
+              {!nameValid ? 'Укажите имя' : !phoneValid ? 'Укажите корректный номер телефона' : quoteLoading ? 'Проверяем адрес…' : outOfZone ? 'Адрес вне зоны доставки — доступен только самовывоз' : notFound ? 'Не нашли адрес — уточните населённый пункт, улицу и дом' : 'Укажите адрес доставки'}
             </div>
           )}
           <button

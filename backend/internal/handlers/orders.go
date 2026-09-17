@@ -22,6 +22,7 @@ func buildTelegramOrder(o repo.Order) telegram.Order {
 	}
 	return telegram.Order{
 		Name: o.CustomerName, Phone: o.CustomerPhone, Address: o.Address,
+		Zone: o.Zone, Delivery: o.Delivery,
 		Comment: o.Comment, ReceiveMethod: o.ReceiveMethod, PayMethod: o.PayMethod,
 		DeliveryTime: o.DeliveryTime, Items: items, Total: o.Total,
 		PromoCode: o.PromoCode, PromoDiscount: o.PromoDiscount,

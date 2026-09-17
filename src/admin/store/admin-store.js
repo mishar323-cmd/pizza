@@ -71,6 +71,40 @@ async function api(method, path, body) {
   try { return JSON.parse(text); } catch { return text; }
 }
 
+// Zones are saved debounced and strictly one request at a time: typing "15"
+// into a field must never let an older "1" land last. Status is broadcast as
+// a 'zones-save' window event: 'saving' | 'saved' | 'error'.
+const _zonesSave = { timer: null, pending: null, inflight: false, status: 'saved' };
+function setZonesStatus(status, error) {
+  _zonesSave.status = status;
+  window.dispatchEvent(new CustomEvent('zones-save', { detail: { status, error } }));
+}
+function queueZonesSave(zones) {
+  _zonesSave.pending = zones;
+  setZonesStatus('saving');
+  clearTimeout(_zonesSave.timer);
+  _zonesSave.timer = setTimeout(flushZonesSave, 700);
+}
+async function flushZonesSave() {
+  if (_zonesSave.inflight || !_zonesSave.pending) return;
+  const zones = _zonesSave.pending;
+  _zonesSave.pending = null;
+  _zonesSave.inflight = true;
+  try {
+    await api('PUT', '/settings/zones', zones);
+    _zonesSave.inflight = false;
+    if (_zonesSave.pending) flushZonesSave();
+    else setZonesStatus('saved');
+  } catch (e) {
+    _zonesSave.inflight = false;
+    if (!_zonesSave.pending) _zonesSave.pending = zones;
+    setZonesStatus('error', e?.message || String(e));
+  }
+}
+window.addEventListener('beforeunload', (e) => {
+  if (_zonesSave.status !== 'saved') { e.preventDefault(); e.returnValue = ''; }
+});
+
 // Map server order → admin store shape (legacy expectations from UI).
 function transformOrder(o) {
   return {
@@ -158,12 +192,15 @@ export const AdminStore = {
     }
   },
 
+  zonesSaveState() { return _zonesSave.status; },
+  retryZonesSave() { flushZonesSave(); },
+
   // Persist settings slices. Diff against last known to avoid extra writes.
   save(next) {
     const prev = _lastStore || {};
     const tasks = [];
     if (next.promos !== prev.promos) tasks.push(api('PUT', '/settings/promos', next.promos));
-    if (next.zones !== prev.zones) tasks.push(api('PUT', '/settings/zones', next.zones));
+    if (next.zones !== prev.zones) queueZonesSave(next.zones);
     if (next.stopList !== prev.stopList || next.stopCategories !== prev.stopCategories) {
       tasks.push(api('PUT', '/settings/stop', { items: next.stopList || [], categories: next.stopCategories || [] }));
     }

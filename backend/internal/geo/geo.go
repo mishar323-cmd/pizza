@@ -31,22 +31,38 @@ func NewGeocoder(apiKey string) *Geocoder {
 
 func (g *Geocoder) Enabled() bool { return g.apiKey != "" }
 
-// Geocode returns coordinates for an address; ok=false when nothing was found.
-// bias biases/restricts results to a viewport around that point, so short
-// addresses without a city ("Ленина 10", "Жуковка") resolve locally instead
-// of matching a same-named street/village in another region of Russia.
-func (g *Geocoder) Geocode(ctx context.Context, address string) (Point, bool, error) {
-	return g.geocode(ctx, address, Point{Lat: 55.767003, Lon: 37.236615}, 0.5)
+// BBox is a lat/lon rectangle.
+type BBox struct {
+	MinLat, MinLon, MaxLat, MaxLon float64
 }
 
-func (g *Geocoder) geocode(ctx context.Context, address string, bias Point, spanDeg float64) (Point, bool, error) {
+// Extend grows the box to include the circle of radiusKm around p.
+func (b *BBox) Extend(p Point, radiusKm float64) {
+	dLat := radiusKm / 111.0
+	dLon := radiusKm / (111.0 * math.Cos(p.Lat*math.Pi/180))
+	b.MinLat = math.Min(b.MinLat, p.Lat-dLat)
+	b.MaxLat = math.Max(b.MaxLat, p.Lat+dLat)
+	b.MinLon = math.Min(b.MinLon, p.Lon-dLon)
+	b.MaxLon = math.Max(b.MaxLon, p.Lon+dLon)
+}
+
+// NewBBox returns a box covering radiusKm around p.
+func NewBBox(p Point, radiusKm float64) BBox {
+	b := BBox{MinLat: p.Lat, MinLon: p.Lon, MaxLat: p.Lat, MaxLon: p.Lon}
+	b.Extend(p, radiusKm)
+	return b
+}
+
+// Geocode returns coordinates for an address, searching only inside area.
+// Without the restriction short addresses ("Ленина 10", "Жуковка") match
+// same-named places elsewhere in Russia. ok=false when nothing was found.
+func (g *Geocoder) Geocode(ctx context.Context, address string, area BBox) (Point, bool, error) {
 	endpoint := "https://geocode-maps.yandex.ru/1.x/?" + url.Values{
 		"apikey":  {g.apiKey},
 		"format":  {"json"},
 		"results": {"1"},
 		"geocode": {address},
-		"ll":      {fmt.Sprintf("%f,%f", bias.Lon, bias.Lat)},
-		"spn":     {fmt.Sprintf("%f,%f", spanDeg, spanDeg)},
+		"bbox":    {fmt.Sprintf("%f,%f~%f,%f", area.MinLon, area.MinLat, area.MaxLon, area.MaxLat)},
 		"rspn":    {"1"},
 	}.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)

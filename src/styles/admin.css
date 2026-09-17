@@ -804,11 +804,29 @@ body.admin {
 .group-stop-flag { display: none; }
 
 /* === Zone map editor === */
-.zone-edit-rich {
-  grid-template-columns: 6px 1.5fr 1fr 1fr 1fr auto;
+.zone-edit.zone-edit-rich {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 14px;
+}
+.zone-edit-rich .stripe { align-self: stretch; min-height: 40px; flex: 0 0 6px; }
+.zone-edit-rich .name { flex: 1 1 220px; align-self: center; }
+.zone-edit-rich .field-mini { flex: 0 1 120px; }
+.zone-edit-rich .zone-desc { flex: 1 1 100%; }
+.zone-edit .field-mini textarea,
+.zone-check-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit; font-size: 13px;
+  resize: vertical;
 }
 @media (max-width: 800px) {
-  .zone-edit-rich { grid-template-columns: 1fr; }
+  .zone-edit-rich .field-mini { flex: 1 1 40%; }
 }
 .zone-editor-modal {
   width: min(1100px, 100%);

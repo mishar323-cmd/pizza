@@ -46,6 +46,8 @@ type Order struct {
 	Name          string  `json:"name"`
 	Phone         string  `json:"phone"`
 	Address       string  `json:"address"`
+	Zone          string  `json:"zone,omitempty"`
+	Delivery      float64 `json:"delivery,omitempty"`
 	Comment       string  `json:"comment"`
 	ReceiveMethod string  `json:"receiveMethod"`
 	PayMethod     string  `json:"payMethod"`
@@ -93,6 +95,17 @@ func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
 	lines = append(lines, fmt.Sprintf("⏰ %s", timeLabel))
 	if o.Address != "" {
 		lines = append(lines, fmt.Sprintf("📍 %s", o.Address))
+	}
+	if o.ReceiveMethod != "pickup" {
+		zone := o.Zone
+		if zone == "" {
+			zone = "⚠️ зона не определена"
+		}
+		fee := "бесплатно"
+		if o.Delivery > 0 {
+			fee = fmt.Sprintf("%.0f ₽", o.Delivery)
+		}
+		lines = append(lines, fmt.Sprintf("🗺 %s · доставка %s", zone, fee))
 	}
 	if o.Comment != "" {
 		lines = append(lines, fmt.Sprintf("💬 %s", o.Comment))
