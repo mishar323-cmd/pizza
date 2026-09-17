@@ -32,12 +32,22 @@ func NewGeocoder(apiKey string) *Geocoder {
 func (g *Geocoder) Enabled() bool { return g.apiKey != "" }
 
 // Geocode returns coordinates for an address; ok=false when nothing was found.
+// bias biases/restricts results to a viewport around that point, so short
+// addresses without a city ("Ленина 10", "Жуковка") resolve locally instead
+// of matching a same-named street/village in another region of Russia.
 func (g *Geocoder) Geocode(ctx context.Context, address string) (Point, bool, error) {
+	return g.geocode(ctx, address, Point{Lat: 55.767003, Lon: 37.236615}, 0.5)
+}
+
+func (g *Geocoder) geocode(ctx context.Context, address string, bias Point, spanDeg float64) (Point, bool, error) {
 	endpoint := "https://geocode-maps.yandex.ru/1.x/?" + url.Values{
 		"apikey":  {g.apiKey},
 		"format":  {"json"},
 		"results": {"1"},
 		"geocode": {address},
+		"ll":      {fmt.Sprintf("%f,%f", bias.Lon, bias.Lat)},
+		"spn":     {fmt.Sprintf("%f,%f", spanDeg, spanDeg)},
+		"rspn":    {"1"},
 	}.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
