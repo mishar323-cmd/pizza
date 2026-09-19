@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -25,6 +26,12 @@ type Config struct {
 	SeedAdminName   string
 	UploadDir       string
 	YandexGeocoderKey string
+	SMSMode           string
+	SMSCLogin         string
+	SMSCPassword      string
+	SMSCSender        string
+	SMSPreferCall     bool
+	OTPDailyCap       int
 }
 
 func Load() *Config {
@@ -46,6 +53,16 @@ func Load() *Config {
 		SeedAdminName:   getenvDefault("ADMIN_NAME", "Администратор"),
 		UploadDir:       getenvDefault("UPLOAD_DIR", "/data/uploads"),
 		YandexGeocoderKey: getenvDefault("YANDEX_GEOCODER_KEY", "377a4a65-0532-44a8-9ff7-d6877c155757"),
+		SMSMode:           getenvDefault("SMS_MODE", "smsc"),
+		SMSCLogin:         os.Getenv("SMSC_LOGIN"),
+		SMSCPassword:      os.Getenv("SMSC_PASSWORD"),
+		SMSCSender:        os.Getenv("SMSC_SENDER"),
+		SMSPreferCall:     os.Getenv("SMS_PREFER_CALL") == "1",
+		OTPDailyCap:       getenvInt("OTP_DAILY_CAP", 150),
+	}
+	if cfg.SMSMode == "smsc" && (cfg.SMSCLogin == "" || cfg.SMSCPassword == "") {
+		log.Println("WARN: SMSC_LOGIN/SMSC_PASSWORD not set — customer login codes use stub (log only)")
+		cfg.SMSMode = "stub"
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -73,6 +90,13 @@ func Load() *Config {
 		log.Println("WARN: ADMIN_PASSWORD not set — no default admin will be seeded")
 	}
 	return cfg
+}
+
+func getenvInt(key string, def int) int {
+	if v, err := strconv.Atoi(os.Getenv(key)); err == nil {
+		return v
+	}
+	return def
 }
 
 func getenvDefault(key, def string) string {

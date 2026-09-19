@@ -43,19 +43,22 @@ type Item struct {
 }
 
 type Order struct {
-	Name          string  `json:"name"`
-	Phone         string  `json:"phone"`
-	Address       string  `json:"address"`
-	Zone          string  `json:"zone,omitempty"`
-	Delivery      float64 `json:"delivery,omitempty"`
-	Comment       string  `json:"comment"`
-	ReceiveMethod string  `json:"receiveMethod"`
-	PayMethod     string  `json:"payMethod"`
-	DeliveryTime  string  `json:"deliveryTime"`
-	Items         []Item  `json:"items"`
-	Total         float64 `json:"total"`
-	PromoCode     string  `json:"promoCode,omitempty"`
-	PromoDiscount float64 `json:"promoDiscount,omitempty"`
+	Name            string  `json:"name"`
+	Phone           string  `json:"phone"`
+	Address         string  `json:"address"`
+	Zone            string  `json:"zone,omitempty"`
+	Delivery        float64 `json:"delivery,omitempty"`
+	Comment         string  `json:"comment"`
+	ReceiveMethod   string  `json:"receiveMethod"`
+	PayMethod       string  `json:"payMethod"`
+	DeliveryTime    string  `json:"deliveryTime"`
+	Items           []Item  `json:"items"`
+	Total           float64 `json:"total"`
+	PromoCode       string  `json:"promoCode,omitempty"`
+	PromoDiscount   float64 `json:"promoDiscount,omitempty"`
+	LoyaltyFreeQty  int     `json:"loyaltyFreeQty,omitempty"`
+	LoyaltyDiscount float64 `json:"loyaltyDiscount,omitempty"`
+	Registered      bool    `json:"registered,omitempty"`
 }
 
 func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
@@ -90,7 +93,11 @@ func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
 	var lines []string
 	lines = append(lines, fmt.Sprintf("🍕 Новый заказ #%s", orderID))
 	lines = append(lines, "")
-	lines = append(lines, fmt.Sprintf("👤 %s | %s", o.Name, o.Phone))
+	who := ""
+	if o.Registered {
+		who = " ✅ вошёл по номеру"
+	}
+	lines = append(lines, fmt.Sprintf("👤 %s | %s%s", o.Name, o.Phone, who))
 	lines = append(lines, fmt.Sprintf("%s | %s", method, pay))
 	lines = append(lines, fmt.Sprintf("⏰ %s", timeLabel))
 	if o.Address != "" {
@@ -120,6 +127,9 @@ func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
 		} else {
 			lines = append(lines, fmt.Sprintf("🎟 Промокод %s", o.PromoCode))
 		}
+	}
+	if o.LoyaltyFreeQty > 0 {
+		lines = append(lines, fmt.Sprintf("🎁 Каждая 8-я пицца: бесплатно %d шт. (−%.0f ₽)", o.LoyaltyFreeQty, o.LoyaltyDiscount))
 	}
 	lines = append(lines, fmt.Sprintf("Итого: %.0f ₽", o.Total))
 

@@ -10,9 +10,10 @@ import (
 )
 
 type OrdersDeps struct {
-	Orders   *repo.Orders
-	Promos   *repo.Promos
-	Telegram *telegram.Client
+	Orders    *repo.Orders
+	Promos    *repo.Promos
+	Telegram  *telegram.Client
+	Customers *CustomerDeps
 }
 
 func buildTelegramOrder(o repo.Order) telegram.Order {
@@ -26,6 +27,8 @@ func buildTelegramOrder(o repo.Order) telegram.Order {
 		Comment: o.Comment, ReceiveMethod: o.ReceiveMethod, PayMethod: o.PayMethod,
 		DeliveryTime: o.DeliveryTime, Items: items, Total: o.Total,
 		PromoCode: o.PromoCode, PromoDiscount: o.PromoDiscount,
+		LoyaltyFreeQty: o.LoyaltyFreeQty, LoyaltyDiscount: o.LoyaltyDiscount,
+		Registered: o.UserID != nil,
 	}
 }
 
@@ -42,23 +45,24 @@ func phoneDigits(s string) int {
 func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Name          string           `json:"name"`
-			Phone         string           `json:"phone"`
-			Address       string           `json:"address"`
-			Zone          string           `json:"zone"`
-			Comment       string           `json:"comment"`
-			ReceiveMethod string           `json:"receiveMethod"`
-			PayMethod     string           `json:"payMethod"`
-			DeliveryTime  string           `json:"deliveryTime"`
-			Items         []repo.OrderItem `json:"items"`
-			Total         float64          `json:"total"`
-			Delivery      float64          `json:"delivery"`
-			PaymentID     string           `json:"paymentId"`
-			PromoCode     string           `json:"promoCode"`
-			PromoDiscount float64          `json:"promoDiscount"` // клиентское превью, сервер пересчитывает сам
-			UtmSource     string           `json:"utmSource"`
-			UtmMedium     string           `json:"utmMedium"`
-			UtmCampaign   string           `json:"utmCampaign"`
+			Name            string           `json:"name"`
+			Phone           string           `json:"phone"`
+			Address         string           `json:"address"`
+			Zone            string           `json:"zone"`
+			Comment         string           `json:"comment"`
+			ReceiveMethod   string           `json:"receiveMethod"`
+			PayMethod       string           `json:"payMethod"`
+			DeliveryTime    string           `json:"deliveryTime"`
+			Items           []repo.OrderItem `json:"items"`
+			Total           float64          `json:"total"`
+			Delivery        float64          `json:"delivery"`
+			PaymentID       string           `json:"paymentId"`
+			PromoCode       string           `json:"promoCode"`
+			PromoDiscount   float64          `json:"promoDiscount"`   // клиентское превью, сервер пересчитывает сам
+			LoyaltyDiscount float64          `json:"loyaltyDiscount"` // клиентское превью, сервер пересчитывает сам
+			UtmSource       string           `json:"utmSource"`
+			UtmMedium       string           `json:"utmMedium"`
+			UtmCampaign     string           `json:"utmCampaign"`
 		}
 		if err := decodeJSON(w, r, &req); err != nil {
 			log.Printf("order decode: %v", err)
@@ -126,6 +130,17 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 		if promo != nil {
 			o.PromoCode = promo.Code
 			o.PromoDiscount = promoDiscount
+		}
+		if u := d.Customers.customerFromRequest(r); u != nil {
+			o.UserID = &u.ID
+			if stats, err := d.Customers.Customers.Loyalty(r.Context(), u.ID, phone10(u.Phone)); err == nil {
+				o.LoyaltyFreeQty, o.LoyaltyDiscount = pizzaGift(stats.PizzaCount, req.Items)
+				if o.LoyaltyDiscount != req.LoyaltyDiscount {
+					log.Printf("order loyalty mismatch user=%d client=%.0f server=%.0f", u.ID, req.LoyaltyDiscount, o.LoyaltyDiscount)
+				}
+			} else {
+				log.Printf("order loyalty: %v", err)
+			}
 		}
 		if err := d.Orders.Create(r.Context(), o); err != nil {
 			log.Printf("order create: %v", err)

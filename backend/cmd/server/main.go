@@ -17,6 +17,7 @@ import (
 	"pizza-backend/internal/geo"
 	"pizza-backend/internal/iiko"
 	"pizza-backend/internal/repo"
+	"pizza-backend/internal/sms"
 	"pizza-backend/internal/telegram"
 	"pizza-backend/internal/yookassa"
 )
@@ -63,7 +64,14 @@ func main() {
 	adminDeps := &handlers.AdminDeps{
 		Admins: admins, Orders: orders, Settings: settings, Promos: promos, Audit: audit, Secret: cfg.JWTSecret,
 	}
-	orderDeps := &handlers.OrdersDeps{Orders: orders, Promos: promos, Telegram: tg}
+	var sender sms.Sender = sms.Stub{}
+	if cfg.SMSMode == "smsc" {
+		sender = sms.NewSMSC(cfg.SMSCLogin, cfg.SMSCPassword, cfg.SMSCSender, cfg.SMSPreferCall)
+	}
+	customerDeps := &handlers.CustomerDeps{
+		Customers: repo.NewCustomers(pool), Sender: sender, Secret: cfg.JWTSecret, DailyCap: cfg.OTPDailyCap,
+	}
+	orderDeps := &handlers.OrdersDeps{Orders: orders, Promos: promos, Telegram: tg, Customers: customerDeps}
 	promoDeps := &handlers.PromosDeps{Promos: promos}
 
 	mux := http.NewServeMux()
@@ -77,6 +85,15 @@ func main() {
 	mux.HandleFunc("GET /api/menu", handlers.PublicMenu(settings))
 	mux.HandleFunc("POST /api/delivery/quote", handlers.DeliveryQuote(geocoder, settings, deliveryOrigin))
 	mux.HandleFunc("GET /api/delivery/zones", handlers.DeliveryZones(settings, deliveryOrigin))
+
+	mux.HandleFunc("POST /api/auth/request-code", handlers.AuthRequestCode(customerDeps))
+	mux.HandleFunc("POST /api/auth/verify", handlers.AuthVerify(customerDeps))
+	mux.HandleFunc("POST /api/auth/logout", handlers.AuthLogout(customerDeps))
+	mux.HandleFunc("GET /api/me", handlers.Me(customerDeps))
+	mux.HandleFunc("PUT /api/me", handlers.MeUpdate(customerDeps))
+	mux.HandleFunc("POST /api/me/addresses", handlers.MeAddressAdd(customerDeps))
+	mux.HandleFunc("PUT /api/me/addresses/{id}", handlers.MeAddressUpdate(customerDeps))
+	mux.HandleFunc("DELETE /api/me/addresses/{id}", handlers.MeAddressDelete(customerDeps))
 	mux.HandleFunc("GET /api/uploads/{name}", handlers.ServeUpload(cfg.UploadDir))
 
 	mux.HandleFunc("POST /api/admin/login", handlers.AdminLogin(adminDeps))
