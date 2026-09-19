@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 
 	"pizza-backend/internal/repo"
 	"pizza-backend/internal/telegram"
@@ -63,6 +64,7 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 			UtmSource       string           `json:"utmSource"`
 			UtmMedium       string           `json:"utmMedium"`
 			UtmCampaign     string           `json:"utmCampaign"`
+			PDConsent       string           `json:"pdConsent"` // version of the consent text the customer ticked
 		}
 		if err := decodeJSON(w, r, &req); err != nil {
 			log.Printf("order decode: %v", err)
@@ -126,6 +128,11 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 			UtmSource:     req.UtmSource,
 			UtmMedium:     req.UtmMedium,
 			UtmCampaign:   req.UtmCampaign,
+		}
+		if v := strings.TrimSpace(req.PDConsent); v != "" && len(v) <= 32 {
+			o.PDConsentVersion = v
+		} else {
+			log.Printf("order without pd consent (old client?)")
 		}
 		if promo != nil {
 			o.PromoCode = promo.Code

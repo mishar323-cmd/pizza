@@ -2,6 +2,9 @@
 // Меню — каталог пиццы, выпадающая корзина, модалка деталей
 import React from 'react';
 import { pizzaGift } from './auth/useAuth.js';
+
+// Bump when consent.html changes materially; stored with each order.
+const PD_CONSENT_VERSION = '2026-09-19';
 import { PIZZA_DATA, ROMAN_DATA, SANDWICH_DATA, SNACK_DATA, DRINK_DATA, DESSERT_DATA, SIZES, CRUSTS, ADDONS } from '../data/menu.js';
 import Ic from '../shared/icons.jsx';
 import { HalvesCard } from './halves.jsx';
@@ -496,6 +499,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       setPickedAddr(fav ? fav.id : '__custom__');
       setCustomAddr('');
       setTried(false);
+      setPdConsent(false);
       setTimeMode('asap');
       setPickedTime('');
     }
@@ -518,6 +522,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
   const [paying, setPaying] = React.useState(false);
   const [payError, setPayError] = React.useState('');
   const [tried, setTried] = React.useState(false); // показать ошибки обяз. полей после попытки
+  const [pdConsent, setPdConsent] = React.useState(false); // never pre-ticked (152-ФЗ)
 
   const [promoCode, setPromoCode] = React.useState('');
   const [promoState, setPromoState] = React.useState('idle'); // idle | checking | ok | error
@@ -616,7 +621,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
   const nameValid = name.trim().length >= 2;
   const phoneValid = phone.replace(/\D/g, '').length >= 10;
   const addrValid = isPickup || (resolvedAddr.trim().length >= 5 && !quoteLoading && (inZone || quoteError));
-  const canSubmit = nameValid && phoneValid && addrValid;
+  const canSubmit = nameValid && phoneValid && addrValid && pdConsent;
 
   const handleSubmit = async () => {
     if (paying) return;
@@ -633,6 +638,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       promoCode: appliedCode,
       promoDiscount: promoState === 'ok' ? promoDiscount : 0,
       loyaltyDiscount: gift.discount,
+      pdConsent: PD_CONSENT_VERSION,
       delivery,
       zone: isPickup ? '' : inZone ? (quote.zone?.name || '') : '⚠️ адрес не проверен автоматически — уточните зону и стоимость доставки',
     };
@@ -864,9 +870,14 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
             <span style={{fontFamily:'Unbounded', fontWeight:700}}>{grandTotal} ₽</span>
           </div>
           {payError && <div style={{color:'var(--primary)', fontSize:13, marginBottom:8, textAlign:'center'}}>{payError}</div>}
+          <label className="co-consent" style={tried && !pdConsent ? {color:'#DC2828'} : undefined}>
+            <input type="checkbox" checked={pdConsent} onChange={e => setPdConsent(e.target.checked)}/>
+            <span>Даю <a href="/consent.html" target="_blank" rel="noopener">согласие на обработку персональных данных</a></span>
+          </label>
+          <p className="co-offer-note">Оформляя заказ, вы принимаете условия <a href="/oferta.html" target="_blank" rel="noopener">публичной оферты</a>.</p>
           {tried && !canSubmit && (
             <div style={{color:'#DC2828', fontSize:13, marginBottom:8, textAlign:'center'}}>
-              {!nameValid ? 'Укажите имя' : !phoneValid ? 'Укажите корректный номер телефона' : quoteLoading ? 'Проверяем адрес…' : outOfZone ? 'Адрес вне зоны доставки — доступен только самовывоз' : notFound ? 'Не нашли адрес — уточните населённый пункт, улицу и дом' : 'Укажите адрес доставки'}
+              {!pdConsent && nameValid && phoneValid && addrValid ? 'Отметьте согласие на обработку персональных данных' : !nameValid ? 'Укажите имя' : !phoneValid ? 'Укажите корректный номер телефона' : quoteLoading ? 'Проверяем адрес…' : outOfZone ? 'Адрес вне зоны доставки — доступен только самовывоз' : notFound ? 'Не нашли адрес — уточните населённый пункт, улицу и дом' : 'Укажите адрес доставки'}
             </div>
           )}
           <button

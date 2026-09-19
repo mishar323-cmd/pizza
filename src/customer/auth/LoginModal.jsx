@@ -94,7 +94,7 @@ export function LoginModal({ open, onClose, auth, localAddresses, onLoggedIn }) 
                 onChange={e => { setPhone(e.target.value); setError(''); }}/>
               <label className="login-consent">
                 <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)}/>
-                <span>Согласен на обработку персональных данных в соответствии с <a href="/policy.html" target="_blank" rel="noopener">политикой</a></span>
+                <span>Даю <a href="/consent.html" target="_blank" rel="noopener">согласие на обработку персональных данных</a></span>
               </label>
               {error && <div className="login-error">{error}</div>}
               <button type="submit" className="btn btn-primary login-submit" disabled={!phoneOk || !agree || busy}>

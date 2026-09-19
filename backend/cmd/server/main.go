@@ -131,6 +131,24 @@ func main() {
 		}
 	}()
 
+	go func() {
+		purge := func() {
+			pctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			if n, err := repo.PurgeExpired(pctx, pool); err != nil {
+				log.Printf("retention purge: %v", err)
+			} else {
+				log.Printf("retention purge: %v", n)
+			}
+		}
+		purge()
+		t := time.NewTicker(24 * time.Hour)
+		defer t.Stop()
+		for range t.C {
+			purge()
+		}
+	}()
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           handler,

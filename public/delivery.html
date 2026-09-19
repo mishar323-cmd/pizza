@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Доставка и оплата — Дело в пицце</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"/>
+  <link rel="stylesheet" href="/legal.css"/>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← На главную</a>
+  <nav class="nav"><a href="/policy.html">Политика ПДн</a><a href="/consent.html">Согласие на обработку ПДн</a><a href="/cookies.html">Cookie</a><a href="/oferta.html">Оферта</a><a href="/delivery.html">Доставка и оплата</a><a href="/rekviziti.html">Реквизиты</a></nav>
+
+  <h1>Доставка и оплата</h1>
+  <p class="sub">Условия действуют на момент оформления заказа</p>
+
+  <h2>Когда</h2>
+  <p>Кухня работает ежедневно с 10:00 до 23:00, заказы принимаем с 10:00 до 22:30 (время московское). Можно заказать на ближайшее время или ко времени — не раньше чем через час.</p>
+
+  <h2>Зоны и стоимость доставки</h2>
+  <p>Стоимость считается автоматически по адресу при оформлении заказа. Если адрес попадает в несколько зон, действует самая выгодная — меньшая зона.</p>
+  <div class="table-wrap">
+    <table id="zones">
+      <tr><th>Зона</th><th>Доставка</th><th>Бесплатно от</th><th>Время</th></tr>
+      <tr><td colspan="4">Загружаем актуальные зоны…</td></tr>
+    </table>
+  </div>
+  <p>Границы зон — на <a href="/#delivery">карте на главной странице</a>. Адреса за пределами зон — только самовывоз.</p>
+
+  <h2>Самовывоз</h2>
+  <p>Московская область, г.о. Красногорск, д. Глухово, Романовская ул., 5, подъезд 10.</p>
+
+  <h2>Оплата</h2>
+  <ul>
+    <li><b>Доставка</b> — онлайн при оформлении заказа: банковской картой или через СБП (сервис ЮKassa).</li>
+    <li><b>Самовывоз</b> — онлайн при оформлении или при получении заказа.</li>
+  </ul>
+  <p>Кассовый чек приходит в электронном виде. Данные банковской карты вводятся на защищённой странице ЮKassa и нам не передаются.</p>
+
+  <h2>Отмена и возврат</h2>
+  <p>Отменить заказ можно по телефону <a href="tel:+79154889419">+7 915 488-94-19</a>. Если что-то не так с заказом — позвоните или напишите в Telegram <a href="https://t.me/delovpizza">@delovpizza</a>: заменим, довезём или вернём деньги. Подробные условия — в <a href="/oferta.html">оферте</a>.</p>
+
+  <footer>© 2026 ИП Рубан-Голяницкий М. О. · ИНН 772648698801 · ОГРНИП 322774600040296 · «Дело в пицце» · delovpizza.ru</footer>
+</div>
+<script>
+(function () {
+  var table = document.getElementById('zones');
+  function rub(n) { return Number(n).toLocaleString('ru-RU') + ' ₽'; }
+  function cell(text) { var td = document.createElement('td'); td.textContent = text; return td; }
+  fetch('/api/delivery/zones').then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function (d) {
+    if (!d.zones || !d.zones.length) throw new Error('no zones');
+    while (table.rows.length > 1) table.deleteRow(1);
+    d.zones.forEach(function (z) {
+      var tr = document.createElement('tr');
+      tr.appendChild(cell(z.name));
+      tr.appendChild(cell(z.deliveryPrice ? rub(z.deliveryPrice) : 'бесплатно'));
+      tr.appendChild(cell(z.deliveryPrice && z.freeFrom ? rub(z.freeFrom) : '—'));
+      tr.appendChild(cell(z.eta ? 'около ' + z.eta + ' мин' : '—'));
+      table.appendChild(tr);
+      if (z.description) {
+        var dr = document.createElement('tr');
+        var td = cell(z.description); td.colSpan = 4; td.style.color = '#6b6b68'; td.style.fontSize = '13px';
+        dr.appendChild(td); table.appendChild(dr);
+      }
+    });
+  }).catch(function () {
+    table.rows[1].cells[0].textContent = 'Не удалось загрузить зоны — уточните по телефону +7 915 488-94-19.';
+  });
+})();
+</script>
+</body>
+</html>

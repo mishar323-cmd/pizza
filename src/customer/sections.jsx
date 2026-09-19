@@ -3,6 +3,7 @@
 import React from 'react';
 import { REVIEWS, FAQ } from '../data/menu.js';
 import Ic from '../shared/icons.jsx';
+import { openCookieSettings } from './consent.js';
 
 const Ic3 = Ic;
 
@@ -175,15 +176,18 @@ export function Footer() {
           <div>
             <h5>Документы</h5>
             <ul>
+              <li><a href="/oferta.html" target="_blank" rel="noopener">Публичная оферта</a></li>
+              <li><a href="/delivery.html" target="_blank" rel="noopener">Доставка и оплата</a></li>
               <li><a href="/policy.html" target="_blank" rel="noopener">Политика обработки персональных данных</a></li>
-              <li><a href="/rekviziti">Реквизиты</a></li>
-              <li><a href="#">Оферта</a></li>
-              <li><a href="#">Доставка и оплата</a></li>
+              <li><a href="/consent.html" target="_blank" rel="noopener">Согласие на обработку персональных данных</a></li>
+              <li><a href="/cookies.html" target="_blank" rel="noopener">Политика cookie</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); openCookieSettings(); }}>Настройки cookie</a></li>
+              <li><a href="/rekviziti.html" target="_blank" rel="noopener">Реквизиты</a></li>
             </ul>
           </div>
         </div>
         <div className="footer-bottom">
-          <span>© 2018–2026 Дело в пицце. ИП Рубан М.О., ИНН 772648698801</span>
+          <span>© 2018–2026 «Дело в пицце». ИП Рубан-Голяницкий М. О., ИНН 772648698801, ОГРНИП 322774600040296</span>
           <span>Сделано с любовью к тесту 🍕</span>
         </div>
       </div>

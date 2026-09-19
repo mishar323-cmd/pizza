@@ -17,34 +17,35 @@ type OrderItem struct {
 }
 
 type Order struct {
-	ID              int64       `json:"id"`
-	Number          int         `json:"number"`
-	CustomerName    string      `json:"customerName"`
-	CustomerPhone   string      `json:"customerPhone"`
-	Address         string      `json:"address"`
-	Zone            string      `json:"zone"`
-	Comment         string      `json:"comment"`
-	ReceiveMethod   string      `json:"receiveMethod"`
-	PayMethod       string      `json:"payMethod"`
-	DeliveryTime    string      `json:"deliveryTime"`
-	Items           []OrderItem `json:"items"`
-	Total           float64     `json:"total"`
-	Delivery        float64     `json:"delivery"`
-	PromoCode       string      `json:"promoCode,omitempty"`
-	PromoDiscount   float64     `json:"promoDiscount,omitempty"`
-	LoyaltyDiscount float64     `json:"loyaltyDiscount,omitempty"`
-	LoyaltyFreeQty  int         `json:"loyaltyFreeQty,omitempty"`
-	UtmSource       string      `json:"utmSource,omitempty"`
-	UtmMedium       string      `json:"utmMedium,omitempty"`
-	UtmCampaign     string      `json:"utmCampaign,omitempty"`
-	Status          string      `json:"status"`
-	EtaMinutes      int         `json:"etaMinutes"`
-	AssignedTo      string      `json:"assignedTo"`
-	PaymentID       string      `json:"paymentId,omitempty"`
-	Paid            bool        `json:"paid"`
-	UserID          *int64      `json:"userId,omitempty"`
-	CreatedAt       time.Time   `json:"createdAt"`
-	UpdatedAt       time.Time   `json:"updatedAt"`
+	ID               int64       `json:"id"`
+	Number           int         `json:"number"`
+	CustomerName     string      `json:"customerName"`
+	CustomerPhone    string      `json:"customerPhone"`
+	Address          string      `json:"address"`
+	Zone             string      `json:"zone"`
+	Comment          string      `json:"comment"`
+	ReceiveMethod    string      `json:"receiveMethod"`
+	PayMethod        string      `json:"payMethod"`
+	DeliveryTime     string      `json:"deliveryTime"`
+	Items            []OrderItem `json:"items"`
+	Total            float64     `json:"total"`
+	Delivery         float64     `json:"delivery"`
+	PromoCode        string      `json:"promoCode,omitempty"`
+	PromoDiscount    float64     `json:"promoDiscount,omitempty"`
+	LoyaltyDiscount  float64     `json:"loyaltyDiscount,omitempty"`
+	LoyaltyFreeQty   int         `json:"loyaltyFreeQty,omitempty"`
+	PDConsentVersion string      `json:"pdConsentVersion,omitempty"`
+	UtmSource        string      `json:"utmSource,omitempty"`
+	UtmMedium        string      `json:"utmMedium,omitempty"`
+	UtmCampaign      string      `json:"utmCampaign,omitempty"`
+	Status           string      `json:"status"`
+	EtaMinutes       int         `json:"etaMinutes"`
+	AssignedTo       string      `json:"assignedTo"`
+	PaymentID        string      `json:"paymentId,omitempty"`
+	Paid             bool        `json:"paid"`
+	UserID           *int64      `json:"userId,omitempty"`
+	CreatedAt        time.Time   `json:"createdAt"`
+	UpdatedAt        time.Time   `json:"updatedAt"`
 }
 
 type Orders struct{ pool *pgxpool.Pool }
@@ -59,13 +60,13 @@ func (r *Orders) Create(ctx context.Context, o *Order) error {
 	return r.pool.QueryRow(ctx, `
 		INSERT INTO orders(number, customer_name, customer_phone, address, zone, comment,
 			receive_method, pay_method, delivery_time, items, total, delivery, status, eta_minutes, assigned_to, payment_id,
-			promo_code, promo_discount, utm_source, utm_medium, utm_campaign, user_id, loyalty_discount, loyalty_free_qty)
-		VALUES (nextval('order_number_seq'), $1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14, $15, NULLIF($16, ''), $17, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''), $21, $22, $23)
+			promo_code, promo_discount, utm_source, utm_medium, utm_campaign, user_id, loyalty_discount, loyalty_free_qty, pd_consent_version, pd_consent_at)
+		VALUES (nextval('order_number_seq'), $1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14, $15, NULLIF($16, ''), $17, NULLIF($18, ''), NULLIF($19, ''), NULLIF($20, ''), $21, $22, $23, $24, CASE WHEN $24 <> '' THEN now() END)
 		RETURNING id, number, status, eta_minutes, created_at, updated_at`,
 		o.CustomerName, o.CustomerPhone, o.Address, o.Zone, o.Comment,
 		o.ReceiveMethod, o.PayMethod, o.DeliveryTime, string(itemsJSON), o.Total,
 		o.Delivery, ifEmpty(o.Status, "new"), ifZeroInt(o.EtaMinutes, 35), o.AssignedTo, o.PaymentID,
-		o.PromoCode, o.PromoDiscount, o.UtmSource, o.UtmMedium, o.UtmCampaign, o.UserID, o.LoyaltyDiscount, o.LoyaltyFreeQty,
+		o.PromoCode, o.PromoDiscount, o.UtmSource, o.UtmMedium, o.UtmCampaign, o.UserID, o.LoyaltyDiscount, o.LoyaltyFreeQty, o.PDConsentVersion,
 	).Scan(&o.ID, &o.Number, &o.Status, &o.EtaMinutes, &o.CreatedAt, &o.UpdatedAt)
 }
 

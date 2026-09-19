@@ -6,6 +6,7 @@ import { useProfile } from './profile/useProfile.js';
 import { ProfileModal } from './profile/profile.jsx';
 import { useAuth, formatPhone, AUTH_ENABLED } from './auth/useAuth.js';
 import { LoginModal } from './auth/LoginModal.jsx';
+import { getCookieConsent, setCookieConsent, loadMetrika } from './consent.js';
 import { DeliveryMap } from './delivery-map.jsx';
 import { NightOverlay } from './night-overlay.jsx';
 import { TopBar, Header, Hero, ScrollingBanner } from './header-hero.jsx';
@@ -78,27 +79,30 @@ function OrderSuccessPage({ method, time, onClose }) {
 function CookieBanner() {
   const [show, setShow] = React.useState(false);
   React.useEffect(() => {
-    try { if (!localStorage.getItem('dvp_cookie_consent')) setShow(true); } catch { setShow(true); }
+    const c = getCookieConsent();
+    if (c === 'all') loadMetrika();
+    if (!c) setShow(true);
+    const reopen = () => setShow(true);
+    window.addEventListener('dvp-cookie-settings', reopen);
+    return () => window.removeEventListener('dvp-cookie-settings', reopen);
   }, []);
   if (!show) return null;
-  const accept = () => {
-    try { localStorage.setItem('dvp_cookie_consent', '1'); } catch {}
-    setShow(false);
-  };
+  const choose = (v) => { setCookieConsent(v); setShow(false); };
+  const btn = { border: 'none', borderRadius: 10, padding: '11px 18px', fontWeight: 600, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' };
   return (
-    <div style={{
-      position: 'fixed', left: 12, right: 12, bottom: 12, zIndex: 9000, maxWidth: 560, margin: '0 auto',
+    <div role="dialog" aria-label="Файлы cookie" style={{
+      position: 'fixed', left: 12, right: 12, bottom: 12, zIndex: 9000, maxWidth: 620, margin: '0 auto',
       background: '#20201e', color: '#fff', borderRadius: 16, padding: '15px 18px',
       boxShadow: '0 16px 48px rgba(0,0,0,.35)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
     }}>
-      <div style={{ flex: 1, minWidth: 220, fontSize: 13.5, lineHeight: 1.45 }}>
-        Мы используем файлы cookie для работы сайта и аналитики. Продолжая, вы соглашаетесь с{' '}
-        <a href="/policy.html" target="_blank" rel="noopener" style={{ color: '#ffb84d' }}>политикой обработки персональных данных</a>.
+      <div style={{ flex: '1 1 260px', fontSize: 13.5, lineHeight: 1.45 }}>
+        Мы используем необходимые cookie для работы сайта, а с вашего согласия — аналитические (Яндекс.Метрика), чтобы делать сайт удобнее.{' '}
+        <a href="/cookies.html" target="_blank" rel="noopener" style={{ color: '#ffb84d' }}>Подробнее о cookie</a>
       </div>
-      <button onClick={accept} style={{
-        background: '#DC2828', color: '#fff', border: 'none', borderRadius: 10,
-        padding: '11px 22px', fontWeight: 600, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap',
-      }}>Принять</button>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button onClick={() => choose('necessary')} style={{ ...btn, background: 'rgba(255,255,255,.12)', color: '#fff' }}>Только необходимые</button>
+        <button onClick={() => choose('all')} style={{ ...btn, background: '#DC2828', color: '#fff' }}>Принять все</button>
+      </div>
     </div>
   );
 }

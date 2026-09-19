@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"pizza-backend/internal/db"
 	"pizza-backend/internal/repo"
@@ -193,7 +194,7 @@ func TestCustomerFlowIntegration(t *testing.T) {
 	s, created := api.do("POST", "/api/orders", token, map[string]any{
 		"name": "Миша", "phone": "+79161234567", "receiveMethod": "pickup", "payMethod": "cash",
 		"items": append(pizzas(700, 450), repo.OrderItem{Name: "Кола", Qty: 1, Price: 150, Cat: "drinks"}),
-		"total": 850, "loyaltyDiscount": 450,
+		"total": 850, "loyaltyDiscount": 450, "pdConsent": "2026-09-19",
 	})
 	if s != 201 {
 		t.Fatalf("order: %d %v", s, created)
@@ -233,6 +234,24 @@ func TestCustomerFlowIntegration(t *testing.T) {
 		t.Fatalf("other user sees orders: %v", me2["orders"])
 	}
 
+	var consentVer string
+	var consentAt *time.Time
+	if err := pool.QueryRow(ctx, `SELECT pd_consent_version, pd_consent_at FROM orders WHERE id = $1`, int64(created["id"].(float64))).Scan(&consentVer, &consentAt); err != nil || consentVer != "2026-09-19" || consentAt == nil {
+		t.Fatalf("consent not stored: %q %v %v", consentVer, consentAt, err)
+	}
+
+	// Retention: old codes deleted, 3-year-old orders anonymized.
+	if _, err := pool.Exec(ctx, `UPDATE otp_codes SET created_at = now() - interval '31 days'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE orders SET created_at = now() - interval '3 years 1 day' WHERE customer_name = 'Гость'`); err != nil {
+		t.Fatal(err)
+	}
+	n, err := repo.PurgeExpired(ctx, pool)
+	if err != nil || n["otp_codes"] == 0 || n["orders_anonymized"] != 1 {
+		t.Fatalf("purge: %v %v", n, err)
+	}
+
 	if s, _ := api.do("POST", "/api/auth/logout", token, nil); s != 200 {
 		t.Fatalf("logout: %d", s)
 	}
@@ -240,4 +259,3 @@ func TestCustomerFlowIntegration(t *testing.T) {
 		t.Fatalf("revoked token still works: %d", s)
 	}
 }
-

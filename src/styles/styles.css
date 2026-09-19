@@ -1848,3 +1848,9 @@ body.site-night-blur { overflow: hidden; }
 
 /* prevent double scrollbars on body when drawer open */
 html.no-scroll, body.no-scroll { overflow: hidden; }
+
+/* checkout consent */
+.co-consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.4; margin: 0 0 6px; cursor: pointer; color: var(--ink-soft); }
+.co-consent input { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; accent-color: var(--primary); }
+.co-consent a, .co-offer-note a { color: var(--primary); }
+.co-offer-note { font-size: 12px; color: var(--ink-mute); margin: 0 0 10px; }
