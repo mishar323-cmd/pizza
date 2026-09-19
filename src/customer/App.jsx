@@ -4,7 +4,7 @@ import { SIZES } from '../data/menu.js';
 import { useTweaks, TweaksPanel, TweakSection, TweakSelect, TweakColor, TweakToggle } from './tweaks-panel.jsx';
 import { useProfile } from './profile/useProfile.js';
 import { ProfileModal } from './profile/profile.jsx';
-import { useAuth, formatPhone } from './auth/useAuth.js';
+import { useAuth, formatPhone, AUTH_ENABLED } from './auth/useAuth.js';
 import { LoginModal } from './auth/LoginModal.jsx';
 import { DeliveryMap } from './delivery-map.jsx';
 import { NightOverlay } from './night-overlay.jsx';
@@ -255,7 +255,7 @@ function App() {
         cartCount={cartCount}
         cartTotal={total}
         onCartOpen={() => setDrawerOpen(true)}
-        onProfileOpen={() => (auth.token ? setProfileOpen(true) : setLoginOpen(true))}
+        onProfileOpen={() => (!AUTH_ENABLED ? showToast('Личный кабинет скоро — вход по номеру') : auth.token ? setProfileOpen(true) : setLoginOpen(true))}
         profileBadge={auth.me?.loyalty?.inCycle === 7}
       />
       <ProfileModal
@@ -319,7 +319,7 @@ function App() {
         profile={checkoutProfile}
         addresses={addresses}
         loyalty={auth.me?.loyalty || null}
-        onLogin={() => setLoginOpen(true)}
+        onLogin={AUTH_ENABLED ? () => setLoginOpen(true) : undefined}
         onConfirm={async (data) => {
           const delivery = data.delivery || 0;
           const grandTotal = Math.max(0, total + delivery - (data.promoDiscount || 0) - (data.loyaltyDiscount || 0));

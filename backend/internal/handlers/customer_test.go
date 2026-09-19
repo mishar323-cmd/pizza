@@ -127,7 +127,7 @@ func TestCustomerFlowIntegration(t *testing.T) {
 	}
 
 	sender := &captureSender{codes: map[string]string{}}
-	cd := &CustomerDeps{Customers: repo.NewCustomers(pool), Sender: sender, Secret: []byte("test"), DailyCap: 100}
+	cd := &CustomerDeps{Customers: repo.NewCustomers(pool), Sender: sender, Secret: []byte("test"), DailyCap: 100, Enabled: true}
 	od := &OrdersDeps{Orders: repo.NewOrders(pool), Customers: cd}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/auth/request-code", AuthRequestCode(cd))

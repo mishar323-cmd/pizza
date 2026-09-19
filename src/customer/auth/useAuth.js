@@ -1,6 +1,10 @@
 /* eslint-disable */
 import React from 'react';
 
+// Customer login is built but switched off until the SMS contract is signed.
+// Also enable on the server: CUSTOMER_AUTH=on in .env.
+export const AUTH_ENABLED = false;
+
 const TOKEN_KEY = 'dvp_session';
 
 function readToken() {

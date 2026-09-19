@@ -32,6 +32,7 @@ type Config struct {
 	SMSCSender        string
 	SMSPreferCall     bool
 	OTPDailyCap       int
+	CustomerAuth      bool
 }
 
 func Load() *Config {
@@ -59,6 +60,7 @@ func Load() *Config {
 		SMSCSender:        os.Getenv("SMSC_SENDER"),
 		SMSPreferCall:     os.Getenv("SMS_PREFER_CALL") == "1",
 		OTPDailyCap:       getenvInt("OTP_DAILY_CAP", 150),
+		CustomerAuth:      os.Getenv("CUSTOMER_AUTH") == "on",
 	}
 	if cfg.SMSMode == "smsc" && (cfg.SMSCLogin == "" || cfg.SMSCPassword == "") {
 		log.Println("WARN: SMSC_LOGIN/SMSC_PASSWORD not set — customer login codes use stub (log only)")

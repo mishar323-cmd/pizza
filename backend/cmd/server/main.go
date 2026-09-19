@@ -13,8 +13,8 @@ import (
 	"pizza-backend/internal/auth"
 	"pizza-backend/internal/config"
 	"pizza-backend/internal/db"
-	"pizza-backend/internal/handlers"
 	"pizza-backend/internal/geo"
+	"pizza-backend/internal/handlers"
 	"pizza-backend/internal/iiko"
 	"pizza-backend/internal/repo"
 	"pizza-backend/internal/sms"
@@ -70,6 +70,7 @@ func main() {
 	}
 	customerDeps := &handlers.CustomerDeps{
 		Customers: repo.NewCustomers(pool), Sender: sender, Secret: cfg.JWTSecret, DailyCap: cfg.OTPDailyCap,
+		Enabled: cfg.CustomerAuth,
 	}
 	orderDeps := &handlers.OrdersDeps{Orders: orders, Promos: promos, Telegram: tg, Customers: customerDeps}
 	promoDeps := &handlers.PromosDeps{Promos: promos}
