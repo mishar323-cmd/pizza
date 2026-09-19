@@ -195,6 +195,7 @@ export function HalvesModal({ open, onClose, onAdd }) {
       img: left.img,
       ingredients: [],
       prices: { sm: total, md: total, lg: total },
+      cat: 'pizza',
     };
     onAdd(fakePizza, {
       sizeId: size,

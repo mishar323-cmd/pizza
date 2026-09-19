@@ -4,6 +4,8 @@ import { SIZES } from '../data/menu.js';
 import { useTweaks, TweaksPanel, TweakSection, TweakSelect, TweakColor, TweakToggle } from './tweaks-panel.jsx';
 import { useProfile } from './profile/useProfile.js';
 import { ProfileModal } from './profile/profile.jsx';
+import { useAuth, formatPhone } from './auth/useAuth.js';
+import { LoginModal } from './auth/LoginModal.jsx';
 import { DeliveryMap } from './delivery-map.jsx';
 import { NightOverlay } from './night-overlay.jsx';
 import { TopBar, Header, Hero, ScrollingBanner } from './header-hero.jsx';
@@ -112,6 +114,15 @@ function App() {
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [checkoutOpen, setCheckoutOpen] = React.useState(false);
   const profileState = useProfile();
+  const auth = useAuth();
+  const [loginOpen, setLoginOpen] = React.useState(false);
+  const serverAddresses = auth.me
+    ? auth.me.addresses.map(a => ({ id: String(a.id), label: a.label, text: a.text, favorite: a.isFavorite }))
+    : null;
+  const addresses = serverAddresses || profileState.profile.addresses;
+  const checkoutProfile = auth.me
+    ? { name: auth.me.user.name, phone: formatPhone(auth.me.user.phone), addresses }
+    : profileState.profile;
 
   // Check for ?order=success redirect from YooKassa
   const urlParams = new URLSearchParams(window.location.search);
@@ -240,20 +251,24 @@ function App() {
   return (
     <>
       <TopBar/>
-      {/* STUB: личный кабинет отключён до SMS-авторизации — вернуть
-          onProfileOpen={() => setProfileOpen(true)} + profileBadge={profileState.freeAvailable}
-          когда добавим auth (см. docs/superpowers/specs/2026-07-27-sms-auth-design.md) */}
       <Header
         cartCount={cartCount}
         cartTotal={total}
         onCartOpen={() => setDrawerOpen(true)}
-        onProfileOpen={() => showToast('Личный кабинет скоро — вход по номеру')}
-        profileBadge={false}
+        onProfileOpen={() => (auth.token ? setProfileOpen(true) : setLoginOpen(true))}
+        profileBadge={auth.me?.loyalty?.inCycle === 7}
       />
       <ProfileModal
-        open={profileOpen}
+        open={profileOpen && !!auth.me}
         onClose={() => setProfileOpen(false)}
-        profileState={profileState}
+        auth={auth}
+      />
+      <LoginModal
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        auth={auth}
+        localAddresses={profileState.profile.addresses}
+        onLoggedIn={(r) => showToast(r.isNew ? 'Добро пожаловать!' : 'Вы вошли')}
       />
       <Hero onScrollToMenu={scrollToMenu}/>
       <ScrollingBanner/>
@@ -280,7 +295,7 @@ function App() {
         removeFromCart={removeFromCart}
         total={total}
         addUpsell={(it) => addToCart(it, { simple: true })}
-        addresses={profileState.profile.addresses}
+        addresses={addresses}
         onCheckout={() => {
           setDrawerOpen(false);
           setTimeout(() => setCheckoutOpen(true), 200);
@@ -301,23 +316,22 @@ function App() {
         onClose={() => setCheckoutOpen(false)}
         items={cart}
         total={total}
-        profile={profileState.profile}
-        addresses={profileState.profile.addresses}
+        profile={checkoutProfile}
+        addresses={addresses}
+        loyalty={auth.me?.loyalty || null}
+        onLogin={() => setLoginOpen(true)}
         onConfirm={async (data) => {
-          const delivery = typeof data.delivery === 'number'
-            ? data.delivery
-            : (data.receiveMethod === 'pickup' ? 0 : (total >= 1000 ? 0 : 150));
-          const promoDiscount = data.promoDiscount || 0;
-          const grandTotal = Math.max(0, total + delivery - promoDiscount);
+          const delivery = data.delivery || 0;
+          const grandTotal = Math.max(0, total + delivery - (data.promoDiscount || 0) - (data.loyaltyDiscount || 0));
           let created = null;
           try {
             const res = await fetch('/api/orders', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...auth.authHeader() },
               body: JSON.stringify({
                 ...data,
                 items: cart.map(i => ({
-                  name: i.name, qty: i.qty, price: i.price,
+                  name: i.name, qty: i.qty, price: i.price, cat: i.cat || (i.prices ? 'pizza' : ''),
                   size: i.sizeLabel || (i.sizeId ? ((SIZES.find(s => s.id === i.sizeId) || {}).label || '') : ''),
                 })),
                 total: grandTotal,
@@ -326,7 +340,17 @@ function App() {
               }),
             });
             created = await res.json();
-            profileState.placeOrder(cart, grandTotal, data.address);
+            if (auth.me) {
+              const addr = (data.address || '').trim();
+              const known = auth.me.addresses.some(a => a.text.trim().toLowerCase() === addr.toLowerCase());
+              if (data.receiveMethod !== 'pickup' && addr.length >= 5 && !known) {
+                auth.addAddress(addr, '').catch(() => {});
+              } else {
+                auth.refresh();
+              }
+            } else {
+              profileState.placeOrder(cart, grandTotal, data.address);
+            }
           } catch {}
           // Online payment keeps the checkout open and redirects to YooKassa;
           // only clear/close the cart for pay-on-delivery.

@@ -191,3 +191,35 @@
   opacity: 0.6;
 }
 @keyframes pinPulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.6); opacity: 0; } }
+
+/* ===== Login ===== */
+.login-form { display: flex; flex-direction: column; gap: 12px; }
+.login-lead { margin: 0; font-size: 15px; line-height: 1.5; color: var(--ink-soft); }
+.login-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-mute); margin-top: 4px; }
+.login-phone { font-size: 18px; padding: 14px; letter-spacing: .02em; }
+.login-code { font-size: 28px; padding: 14px; text-align: center; letter-spacing: .5em; font-variant-numeric: tabular-nums; max-width: 220px; }
+.login-consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--ink-soft); cursor: pointer; }
+.login-consent input { margin-top: 2px; width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--primary); }
+.login-consent a { color: var(--primary); }
+.login-error { color: #b42318; background: #fdf1f1; border-radius: var(--r-md); padding: 9px 12px; font-size: 13px; }
+.login-submit { width: 100%; justify-content: center; padding: 14px; font-size: 15px; }
+.login-submit:disabled { opacity: .5; cursor: not-allowed; }
+.login-note { margin: 0; font-size: 12px; color: var(--ink-mute); text-align: center; }
+.login-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.login-actions .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ===== Profile extras ===== */
+.link-btn { background: none; border: none; padding: 0; color: var(--primary); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; }
+.name-edit { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.name-edit .co-input { padding: 8px 10px; }
+.addr-msg { margin-top: 10px; font-size: 13px; padding: 8px 12px; border-radius: var(--r-md); }
+.addr-msg.ok { background: #f0faf3; color: #1a7f37; }
+.addr-msg.bad { background: #fff6e0; color: #8a5a00; }
+.order-status { font-weight: 600; }
+.order-status.st-delivered { color: #1a7f37 !important; }
+.order-status.st-cancelled { color: #b42318 !important; }
+.logout-btn { align-self: flex-start; }
+.co-login-hint { display: block; width: 100%; margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: var(--r-md); background: var(--bg-soft); color: var(--ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.co-login-hint:hover { border-color: var(--primary); }
+.name-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.profile-hero small { display: block; }

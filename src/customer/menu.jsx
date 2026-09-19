@@ -1,6 +1,7 @@
 /* eslint-disable */
 // Меню — каталог пиццы, выпадающая корзина, модалка деталей
 import React from 'react';
+import { pizzaGift } from './auth/useAuth.js';
 import { PIZZA_DATA, ROMAN_DATA, SANDWICH_DATA, SNACK_DATA, DRINK_DATA, DESSERT_DATA, SIZES, CRUSTS, ADDONS } from '../data/menu.js';
 import Ic from '../shared/icons.jsx';
 import { HalvesCard } from './halves.jsx';
@@ -456,7 +457,7 @@ export function PizzaDetail({ pizza, onClose, onAdd }) {
 }
 
 /* ======================== Checkout Modal ======================== */
-export function CheckoutModal({ open, onClose, onConfirm, items, total, profile, addresses }) {
+export function CheckoutModal({ open, onClose, onConfirm, items, total, profile, addresses, loyalty, onLogin }) {
 
   const [name, setName] = React.useState('');
   const [phone, setPhone] = React.useState('');
@@ -499,6 +500,15 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       setPickedTime('');
     }
   }, [open]);
+
+  // Logged in while the checkout is open: fill what the customer hasn't typed.
+  React.useEffect(() => {
+    if (!open || !loyalty || !profile) return;
+    setName(n => n || profile.name || '');
+    setPhone(p => p || profile.phone || '');
+    const fav = (profile.addresses || []).find(a => a.favorite) || (profile.addresses || [])[0];
+    if (fav) setPickedAddr(cur => (cur === '__custom__' && !customAddr ? fav.id : cur));
+  }, [!!loyalty]);
 
   // При смене на доставку сбрасываем "при получении"
   React.useEffect(() => {
@@ -559,7 +569,8 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
   // Geocoder outage must not lose orders: allow, operator confirms the fee.
   const delivery = inZone ? quote.deliveryPrice : 0;
   const subtotalWithDelivery = total + delivery;
-  const grandTotal = Math.max(0, subtotalWithDelivery - promoDiscount);
+  const gift = loyalty ? pizzaGift(loyalty.pizzaCount, items) : { qty: 0, discount: 0 };
+  const grandTotal = Math.max(0, subtotalWithDelivery - promoDiscount - gift.discount);
 
   const applyPromo = async () => {
     const code = promoCode.trim();
@@ -621,6 +632,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       deliveryTime: timeMode === 'exact' ? pickedTime : 'asap',
       promoCode: appliedCode,
       promoDiscount: promoState === 'ok' ? promoDiscount : 0,
+      loyaltyDiscount: gift.discount,
       delivery,
       zone: isPickup ? '' : inZone ? (quote.zone?.name || '') : '⚠️ адрес не проверен автоматически — уточните зону и стоимость доставки',
     };
@@ -691,6 +703,17 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
                 <span>Промокод {promoCode.trim().toUpperCase()}</span>
                 <span>−{promoDiscount} ₽</span>
               </div>
+            )}
+            {gift.qty > 0 && (
+              <div className="co-row co-total" style={{color:'#1B8A3D'}}>
+                <span>🎁 Каждая 8-я пицца в подарок{gift.qty > 1 ? ` ×${gift.qty}` : ''}</span>
+                <span>−{gift.discount} ₽</span>
+              </div>
+            )}
+            {!loyalty && onLogin && (
+              <button type="button" className="co-login-hint" onClick={onLogin}>
+                🍕 Войдите по номеру — сохраним адрес, а каждая 8-я пицца будет бесплатной
+              </button>
             )}
           </div>
 
