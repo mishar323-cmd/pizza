@@ -11,20 +11,20 @@ import (
 )
 
 type Config struct {
-	YooKassaShopID  string
-	YooKassaSecret  string
-	TGBotToken      string
-	TGChatID        string
-	TGApiBase       string
-	TGRelaySecret   string
-	Port            string
-	AllowOrigin     string
-	DatabaseURL     string
-	JWTSecret       []byte
-	SeedAdminLogin  string
-	SeedAdminPass   string
-	SeedAdminName   string
-	UploadDir       string
+	YooKassaShopID    string
+	YooKassaSecret    string
+	TGBotToken        string
+	TGChatID          string
+	TGApiBase         string
+	TGRelaySecret     string
+	Port              string
+	AllowOrigin       string
+	DatabaseURL       string
+	JWTSecret         []byte
+	SeedAdminLogin    string
+	SeedAdminPass     string
+	SeedAdminName     string
+	UploadDir         string
 	YandexGeocoderKey string
 	SMSMode           string
 	SMSCLogin         string
@@ -33,6 +33,7 @@ type Config struct {
 	SMSPreferCall     bool
 	OTPDailyCap       int
 	CustomerAuth      bool
+	TGGatewayToken    string
 }
 
 func Load() *Config {
@@ -40,19 +41,19 @@ func Load() *Config {
 	_ = godotenv.Load("../.env")
 
 	cfg := &Config{
-		YooKassaShopID:  os.Getenv("YOOKASSA_SHOP_ID"),
-		YooKassaSecret:  os.Getenv("YOOKASSA_SECRET"),
-		TGBotToken:      os.Getenv("TG_BOT_TOKEN"),
-		TGChatID:        os.Getenv("TG_CHAT_ID"),
-		TGApiBase:       os.Getenv("TG_API_BASE"),
-		TGRelaySecret:   os.Getenv("TG_RELAY_SECRET"),
-		Port:            getenvDefault("PORT", "8080"),
-		AllowOrigin:     os.Getenv("ALLOW_ORIGIN"),
-		DatabaseURL:     os.Getenv("DATABASE_URL"),
-		SeedAdminLogin:  getenvDefault("ADMIN_LOGIN", "admin"),
-		SeedAdminPass:   os.Getenv("ADMIN_PASSWORD"),
-		SeedAdminName:   getenvDefault("ADMIN_NAME", "Администратор"),
-		UploadDir:       getenvDefault("UPLOAD_DIR", "/data/uploads"),
+		YooKassaShopID:    os.Getenv("YOOKASSA_SHOP_ID"),
+		YooKassaSecret:    os.Getenv("YOOKASSA_SECRET"),
+		TGBotToken:        os.Getenv("TG_BOT_TOKEN"),
+		TGChatID:          os.Getenv("TG_CHAT_ID"),
+		TGApiBase:         os.Getenv("TG_API_BASE"),
+		TGRelaySecret:     os.Getenv("TG_RELAY_SECRET"),
+		Port:              getenvDefault("PORT", "8080"),
+		AllowOrigin:       os.Getenv("ALLOW_ORIGIN"),
+		DatabaseURL:       os.Getenv("DATABASE_URL"),
+		SeedAdminLogin:    getenvDefault("ADMIN_LOGIN", "admin"),
+		SeedAdminPass:     os.Getenv("ADMIN_PASSWORD"),
+		SeedAdminName:     getenvDefault("ADMIN_NAME", "Администратор"),
+		UploadDir:         getenvDefault("UPLOAD_DIR", "/data/uploads"),
 		YandexGeocoderKey: getenvDefault("YANDEX_GEOCODER_KEY", "377a4a65-0532-44a8-9ff7-d6877c155757"),
 		SMSMode:           getenvDefault("SMS_MODE", "smsc"),
 		SMSCLogin:         os.Getenv("SMSC_LOGIN"),
@@ -61,6 +62,11 @@ func Load() *Config {
 		SMSPreferCall:     os.Getenv("SMS_PREFER_CALL") == "1",
 		OTPDailyCap:       getenvInt("OTP_DAILY_CAP", 150),
 		CustomerAuth:      os.Getenv("CUSTOMER_AUTH") == "on",
+		TGGatewayToken:    os.Getenv("TG_GATEWAY_TOKEN"),
+	}
+	if cfg.SMSMode == "telegram" && cfg.TGGatewayToken == "" {
+		log.Println("WARN: TG_GATEWAY_TOKEN not set — falling back to SMSC for login codes")
+		cfg.SMSMode = "smsc"
 	}
 	if cfg.SMSMode == "smsc" && (cfg.SMSCLogin == "" || cfg.SMSCPassword == "") {
 		log.Println("WARN: SMSC_LOGIN/SMSC_PASSWORD not set — customer login codes use stub (log only)")

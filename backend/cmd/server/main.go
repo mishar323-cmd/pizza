@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -65,8 +66,12 @@ func main() {
 		Admins: admins, Orders: orders, Settings: settings, Promos: promos, Audit: audit, Secret: cfg.JWTSecret,
 	}
 	var sender sms.Sender = sms.Stub{}
-	if cfg.SMSMode == "smsc" {
+	if cfg.SMSCLogin != "" && cfg.SMSCPassword != "" {
 		sender = sms.NewSMSC(cfg.SMSCLogin, cfg.SMSCPassword, cfg.SMSCSender, cfg.SMSPreferCall)
+	}
+	if cfg.SMSMode == "telegram" {
+		// Telegram first (≈1 ₽), SMSC call/SMS for phones without Telegram.
+		sender = sms.NewTelegramGateway(cfg.TGGatewayToken, strings.TrimRight(cfg.TGApiBase, "/")+"/gw", cfg.TGRelaySecret, sender)
 	}
 	customerDeps := &handlers.CustomerDeps{
 		Customers: repo.NewCustomers(pool), Sender: sender, Secret: cfg.JWTSecret, DailyCap: cfg.OTPDailyCap,

@@ -1,12 +1,15 @@
-// Cloudflare Worker: proxy the Telegram Bot API from a Russian VPS where
-// api.telegram.org is blocked by RKN. The backend calls this Worker's URL
-// (TG_API_BASE) instead of api.telegram.org; the Worker forwards to Telegram.
+// Cloudflare Worker: proxy Telegram from a Russian VPS where Telegram hosts are
+// blocked by RKN. The backend calls this Worker instead of Telegram directly.
+//
+// Routes:
+//   /bot<token>/<method>  → https://api.telegram.org       (order notifications)
+//   /gw/<method>          → https://gatewayapi.telegram.org (login codes via
+//                           Telegram Gateway; Authorization header passed on)
 //
 // Deploy:
-//   1. cloudflare.com → Workers & Pages → Create → Create Worker
-//   2. Name it e.g. "tg-relay", replace the code with this file, Deploy
-//   3. Copy the URL (https://tg-relay.<your-subdomain>.workers.dev)
-//   4. Tell Claude the URL — it sets TG_API_BASE + TG_RELAY_SECRET on the server
+//   1. cloudflare.com → Workers & Pages → open the existing "tg-relay" worker
+//   2. Replace the code with this file, Deploy
+//   3. The URL stays the same — nothing to change on the server
 //
 // Security: only requests carrying the matching X-Relay-Secret are forwarded,
 // so this is not an open Telegram proxy.
@@ -19,10 +22,18 @@ export default {
       return new Response("forbidden", { status: 403 });
     }
     const url = new URL(request.url);
-    const target = "https://api.telegram.org" + url.pathname + url.search;
+
+    const target = url.pathname.startsWith("/gw/")
+      ? "https://gatewayapi.telegram.org/" + url.pathname.slice(4) + url.search
+      : "https://api.telegram.org" + url.pathname + url.search;
+
+    const headers = { "Content-Type": request.headers.get("Content-Type") || "application/json" };
+    const auth = request.headers.get("Authorization");
+    if (auth) headers["Authorization"] = auth;
+
     const upstream = await fetch(target, {
       method: request.method,
-      headers: { "Content-Type": request.headers.get("Content-Type") || "application/json" },
+      headers,
       body: (request.method === "GET" || request.method === "HEAD") ? undefined : await request.arrayBuffer(),
     });
     return new Response(upstream.body, {

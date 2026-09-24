@@ -107,9 +107,11 @@ export function LoginModal({ open, onClose, auth, localAddresses, onLoggedIn }) 
               <p className="login-lead">
                 {channel === 'call'
                   ? <>Сейчас на <b>{formatPhone(phone)}</b> поступит звонок. Отвечать не нужно — введите <b>последние 4 цифры</b> номера, с которого звонят.</>
-                  : <>Отправили SMS с кодом на <b>{formatPhone(phone)}</b>.</>}
+                  : channel === 'telegram'
+                    ? <>Код отправлен в <b>Telegram</b> на номер <b>{formatPhone(phone)}</b> — проверьте чат с Telegram.</>
+                    : <>Отправили SMS с кодом на <b>{formatPhone(phone)}</b>.</>}
               </p>
-              <label className="login-label" htmlFor="login-code">{channel === 'call' ? 'Последние 4 цифры номера' : 'Код из SMS'}</label>
+              <label className="login-label" htmlFor="login-code">{channel === 'call' ? 'Последние 4 цифры номера' : channel === 'telegram' ? 'Код из Telegram' : 'Код из SMS'}</label>
               <input id="login-code" ref={codeRef} className="co-input login-code" inputMode="numeric" autoComplete="one-time-code"
                 maxLength={4} placeholder="• • • •" value={code} onChange={e => onCode(e.target.value)} disabled={busy}/>
               {error && <div className="login-error">{error}</div>}
