@@ -24,11 +24,12 @@ export function MenuSection({ cart, addToCart, removeFromCart, getQty, openDetai
         if (!alive || !d) return;
         const items = d.menu && Array.isArray(d.menu.items) ? d.menu.items : null;
         const customCats = d.menu && Array.isArray(d.menu.categories) ? d.menu.categories : [];
+        const order = d.menu && Array.isArray(d.menu.order) ? d.menu.order : [];
         const stopSet = new Set(d.stop && Array.isArray(d.stop.items) ? d.stop.items : []);
-        if (!items && customCats.length === 0 && stopSet.size === 0) { setDyn(null); return; }
+        if (!items && customCats.length === 0 && stopSet.size === 0 && order.length === 0) { setDyn(null); return; }
         const byCat = {};
         (items || []).forEach(it => { const c = it.cat || 'pizza'; (byCat[c] = byCat[c] || []).push(it); });
-        setDyn({ byCat, customCats, stopSet, hasItems: !!items });
+        setDyn({ byCat, customCats, stopSet, order, hasItems: !!items });
       })
       .catch(() => {});
     return () => { alive = false; };
@@ -52,9 +53,13 @@ export function MenuSection({ cart, addToCart, removeFromCart, getQty, openDetai
   const customCats = dyn ? dyn.customCats : [];
   const visible = (id) => (byCat[id] || []).filter(p => !(stopSet && stopSet.has(p.id)));
 
+  // Порядок вкладок задаётся в админке перетаскиванием; остальные — следом.
+  const order = (dyn && dyn.order) || [];
+  const rank = (id) => { const i = order.indexOf(id); return i === -1 ? order.length + 1 : i; };
   const categories = [...baseCats, ...customCats]
     .map(c => ({ id: c.id, label: c.label, count: visible(c.id).length }))
-    .filter(c => baseCats.some(b => b.id === c.id) || c.count > 0);
+    .filter(c => baseCats.some(b => b.id === c.id) || c.count > 0)
+    .sort((a, b) => rank(a.id) - rank(b.id));
 
   const filters = [
     { id: 'veg', label: 'Вегетарианское', icon: 'leaf' },

@@ -21,16 +21,49 @@ export function MenuEdit({ store, setStore }) {
   const [draft, setDraft] = React.useState(null);
   const [uploading, setUploading] = React.useState(false);
 
-  const cats = [
-    { id: 'all', label: 'Все' },
+  const BASE_CATS = [
     { id: 'pizza', label: 'Пицца' },
     { id: 'roman', label: 'Римская' },
     { id: 'sandwich', label: 'Сэндвичи' },
     { id: 'snacks', label: 'Закуски' },
     { id: 'drinks', label: 'Напитки' },
     { id: 'desserts', label: 'Десерты' },
-    ...(store.menuCategories || []),
   ];
+  // Порядок вкладок хранится в настройках меню и повторяется на сайте.
+  const order = store.menuOrder || [];
+  const rank = (id) => { const i = order.indexOf(id); return i === -1 ? order.length + 1 : i; };
+  const ordered = [...BASE_CATS, ...(store.menuCategories || [])].sort((a, b) => rank(a.id) - rank(b.id));
+  const cats = [{ id: 'all', label: 'Все' }, ...ordered];
+
+  const [dragId, setDragId] = React.useState(null);
+  const [overId, setOverId] = React.useState(null);
+
+  const saveOrder = (ids) => {
+    const next = { ...store, menuOrder: ids };
+    setStore(next);
+    AdminStore.save(next);
+  };
+
+  const dropOn = (targetId) => {
+    if (!dragId || dragId === targetId) { setDragId(null); setOverId(null); return; }
+    const ids = ordered.map(c => c.id);
+    const from = ids.indexOf(dragId);
+    const to = ids.indexOf(targetId);
+    if (from === -1 || to === -1) { setDragId(null); setOverId(null); return; }
+    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    saveOrder(ids);
+    setDragId(null);
+    setOverId(null);
+  };
+
+  const moveBy = (id, delta) => {
+    const ids = ordered.map(c => c.id);
+    const from = ids.indexOf(id);
+    const to = from + delta;
+    if (from === -1 || to < 0 || to >= ids.length) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    saveOrder(ids);
+  };
 
   const addCategory = () => {
     const label = window.prompt('Название новой категории (например, «Соусы»):');
@@ -131,13 +164,41 @@ export function MenuEdit({ store, setStore }) {
       <div className="tabs-row">
         {cats.map(c => {
           const count = c.id === 'all' ? menu.length : menu.filter(p => (p.cat || 'pizza') === c.id).length;
-          return (
-            <button key={c.id} className={`tab-btn ${cat === c.id ? 'on' : ''}`} onClick={() => setCat(c.id)}>
+          const movable = c.id !== 'all';
+          const tab = (
+            <button
+              className={`tab-btn ${cat === c.id ? 'on' : ''} ${movable ? 'draggable' : ''} ${dragId === c.id ? 'dragging' : ''} ${overId === c.id ? 'drag-over' : ''}`}
+              draggable={movable}
+              onClick={() => setCat(c.id)}
+              onDragStart={movable ? (e) => { setDragId(c.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.id); } : undefined}
+              onDragOver={movable ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (overId !== c.id) setOverId(c.id); } : undefined}
+              onDragLeave={movable ? () => setOverId(id => (id === c.id ? null : id)) : undefined}
+              onDrop={movable ? (e) => { e.preventDefault(); dropOn(c.id); } : undefined}
+              onDragEnd={() => { setDragId(null); setOverId(null); }}
+              onKeyDown={movable ? (e) => {
+                if (!e.altKey) return;
+                if (e.key === 'ArrowLeft') { e.preventDefault(); moveBy(c.id, -1); }
+                if (e.key === 'ArrowRight') { e.preventDefault(); moveBy(c.id, 1); }
+              } : undefined}
+              title={movable ? 'Перетащите, чтобы изменить порядок (или Alt + ←/→)' : undefined}
+            >
+              {movable && <span className="drag-grip" aria-hidden="true">⠿</span>}
               {c.label} <span className="count">{count}</span>
             </button>
           );
+          if (!movable) return <React.Fragment key={c.id}>{tab}</React.Fragment>;
+          return (
+            <span className="tab-wrap" key={c.id}>
+              {tab}
+              <span className="tab-move">
+                <button className="tab-move-btn" aria-label={`Переместить «${c.label}» левее`} onClick={() => moveBy(c.id, -1)}>‹</button>
+                <button className="tab-move-btn" aria-label={`Переместить «${c.label}» правее`} onClick={() => moveBy(c.id, 1)}>›</button>
+              </span>
+            </span>
+          );
         })}
       </div>
+      <p className="admin-hint">Порядок вкладок задаёт порядок категорий на сайте. Перетащите вкладку мышью, выделите и нажмите Alt + ← / →, а на телефоне — стрелками ‹ ›.</p>
 
       <div className="toolbar">
         <input type="search" placeholder="Найти позицию..." value={search} onChange={(e) => setSearch(e.target.value)}/>
