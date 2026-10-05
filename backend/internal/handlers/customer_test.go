@@ -203,6 +203,10 @@ func TestCustomerFlowIntegration(t *testing.T) {
 	if err != nil || o.UserID == nil || o.LoyaltyFreeQty != 1 || o.LoyaltyDiscount != 450 {
 		t.Fatalf("order stored wrong: %+v %v", o, err)
 	}
+	// 3000 ₽ потрачено раньше → «Любитель», −5 % от еды за вычетом подарка.
+	if o.RankLevel != "fan" || o.RankDiscount != 43 {
+		t.Fatalf("rank discount: %q %.0f", o.RankLevel, o.RankDiscount)
+	}
 
 	s, me := api.do("GET", "/api/me", token, nil)
 	if s != 200 {

@@ -29,8 +29,20 @@ func buildTelegramOrder(o repo.Order) telegram.Order {
 		DeliveryTime: o.DeliveryTime, Items: items, Total: o.Total,
 		PromoCode: o.PromoCode, PromoDiscount: o.PromoDiscount,
 		LoyaltyFreeQty: o.LoyaltyFreeQty, LoyaltyDiscount: o.LoyaltyDiscount,
+		RankDiscount: o.RankDiscount, RankName: levelName(o.RankLevel),
 		Registered: o.UserID != nil,
 	}
+}
+
+// itemsTotal is the food subtotal, delivery and discounts excluded.
+func itemsTotal(items []repo.OrderItem) float64 {
+	var sum float64
+	for _, it := range items {
+		if it.Qty > 0 && it.Price > 0 {
+			sum += it.Price * float64(it.Qty)
+		}
+	}
+	return sum
 }
 
 func phoneDigits(s string) int {
@@ -61,6 +73,7 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 			PromoCode       string           `json:"promoCode"`
 			PromoDiscount   float64          `json:"promoDiscount"`   // клиентское превью, сервер пересчитывает сам
 			LoyaltyDiscount float64          `json:"loyaltyDiscount"` // клиентское превью, сервер пересчитывает сам
+			RankDiscount    float64          `json:"rankDiscount"`    // клиентское превью, сервер пересчитывает сам
 			UtmSource       string           `json:"utmSource"`
 			UtmMedium       string           `json:"utmMedium"`
 			UtmCampaign     string           `json:"utmCampaign"`
@@ -100,8 +113,18 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 		if req.PromoCode != "" && d.Promos != nil {
 			p, err := d.Promos.FindByCode(r.Context(), req.PromoCode)
 			if err == nil {
-				subtotal := req.Total + req.Delivery
-				if disc, reason := resolveDiscount(p, subtotal); reason == "" {
+				// Клиент присылает total уже со скидками, поэтому базу считаем
+				// сами — иначе скидка выходит меньше той, что увидел покупатель.
+				subtotal := itemsTotal(req.Items) + req.Delivery
+				disc, reason := resolveDiscount(p, subtotal)
+				if reason == "" {
+					reason, err = promoBlockedForPhone(r.Context(), d.Promos, p, req.Phone)
+					if err != nil {
+						log.Printf("promo phone check at order creation: %v", err)
+						reason = "Промокод сейчас недоступен"
+					}
+				}
+				if reason == "" {
 					promo = p
 					promoDiscount = disc
 				} else {
@@ -144,6 +167,15 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 				o.LoyaltyFreeQty, o.LoyaltyDiscount = pizzaGift(stats.PizzaCount, req.Items)
 				if o.LoyaltyDiscount != req.LoyaltyDiscount {
 					log.Printf("order loyalty mismatch user=%d client=%.0f server=%.0f", u.ID, req.LoyaltyDiscount, o.LoyaltyDiscount)
+				}
+				if lvl := levelFor(stats.TotalSpent); lvl.Discount > 0 && promo == nil {
+					o.RankDiscount = rankDiscount(lvl, itemsTotal(req.Items), o.LoyaltyDiscount)
+					if o.RankDiscount > 0 {
+						o.RankLevel = lvl.ID
+					}
+					if o.RankDiscount != req.RankDiscount {
+						log.Printf("order rank mismatch user=%d client=%.0f server=%.0f", u.ID, req.RankDiscount, o.RankDiscount)
+					}
 				}
 			} else {
 				log.Printf("order loyalty: %v", err)

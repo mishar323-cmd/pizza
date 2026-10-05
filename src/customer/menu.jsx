@@ -580,7 +580,13 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
   const delivery = inZone ? quote.deliveryPrice : 0;
   const subtotalWithDelivery = total + delivery;
   const gift = loyalty ? pizzaGift(loyalty.pizzaCount, items) : { qty: 0, discount: 0 };
-  const grandTotal = Math.max(0, subtotalWithDelivery - promoDiscount - gift.discount);
+  // Скидка ранга не складывается с промокодом: применён промокод — ранг не считаем.
+  const promoOn = promoState === 'ok' && promoDiscount > 0;
+  const rankPct = loyalty?.level?.discount || 0;
+  const rankDiscount = !promoOn && rankPct > 0
+    ? Math.round(Math.max(0, total - gift.discount) * rankPct / 100)
+    : 0;
+  const grandTotal = Math.max(0, subtotalWithDelivery - promoDiscount - gift.discount - rankDiscount);
 
   const applyPromo = async () => {
     const code = promoCode.trim();
@@ -643,6 +649,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
       promoCode: appliedCode,
       promoDiscount: promoState === 'ok' ? promoDiscount : 0,
       loyaltyDiscount: gift.discount,
+      rankDiscount,
       pdConsent: PD_CONSENT_VERSION,
       delivery,
       zone: isPickup ? '' : inZone ? (quote.zone?.name || '') : '⚠️ адрес не проверен автоматически — уточните зону и стоимость доставки',
@@ -719,6 +726,18 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
               <div className="co-row co-total" style={{color:'#1B8A3D'}}>
                 <span>🎁 Каждая 8-я пицца в подарок{gift.qty > 1 ? ` ×${gift.qty}` : ''}</span>
                 <span>−{gift.discount} ₽</span>
+              </div>
+            )}
+            {rankDiscount > 0 && (
+              <div className="co-row co-total" style={{color:'#1B8A3D'}}>
+                <span>🏅 Скидка «{loyalty.level.name}» −{rankPct}%</span>
+                <span>−{rankDiscount} ₽</span>
+              </div>
+            )}
+            {promoOn && rankPct > 0 && (
+              <div className="co-row co-total" style={{color:'#999', fontSize: 13}}>
+                <span>Скидка «{loyalty.level.name}» не суммируется с промокодом</span>
+                <span/>
               </div>
             )}
             {!loyalty && onLogin && (

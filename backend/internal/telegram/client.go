@@ -58,6 +58,8 @@ type Order struct {
 	PromoDiscount   float64 `json:"promoDiscount,omitempty"`
 	LoyaltyFreeQty  int     `json:"loyaltyFreeQty,omitempty"`
 	LoyaltyDiscount float64 `json:"loyaltyDiscount,omitempty"`
+	RankDiscount    float64 `json:"rankDiscount,omitempty"`
+	RankName        string  `json:"rankName,omitempty"`
 	Registered      bool    `json:"registered,omitempty"`
 }
 
@@ -130,6 +132,9 @@ func (c *Client) SendOrderNotification(ctx context.Context, o Order) error {
 	}
 	if o.LoyaltyFreeQty > 0 {
 		lines = append(lines, fmt.Sprintf("🎁 Каждая 8-я пицца: бесплатно %d шт. (−%.0f ₽)", o.LoyaltyFreeQty, o.LoyaltyDiscount))
+	}
+	if o.RankDiscount > 0 {
+		lines = append(lines, fmt.Sprintf("🏅 Скидка «%s» (−%.0f ₽)", o.RankName, o.RankDiscount))
 	}
 	lines = append(lines, fmt.Sprintf("Итого: %.0f ₽", o.Total))
 

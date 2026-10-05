@@ -136,22 +136,25 @@ export function ProfileModal({ open, onClose, auth }) {
           <div className="level-card">
             <div className="lc-top">
               <span className="lc-badge" style={{background: cur.color + '22', color: cur.color}}>
-                Уровень · {cur.name}
+                Уровень · {cur.name}{cur.discount > 0 ? ` · −${cur.discount}%` : ''}
               </span>
               <strong className="lc-sum">{totalSum.toLocaleString('ru-RU')} ₽</strong>
             </div>
             <small className="lc-hint">общая сумма заказов · {loyalty.ordersCount} {plural(loyalty.ordersCount, 'заказ', 'заказа', 'заказов')}</small>
             <div className="lc-bar"><span style={{width: `${progress}%`, background: cur.color}}/></div>
             {next ? (
-              <small className="lc-next">До «{next.name}» — {(next.min - totalSum).toLocaleString('ru-RU')} ₽</small>
+              <small className="lc-next">До «{next.name}» (−{next.discount}%) — {(next.min - totalSum).toLocaleString('ru-RU')} ₽</small>
             ) : (
               <small className="lc-next">🏆 Максимальный уровень</small>
+            )}
+            {cur.discount > 0 && (
+              <small className="lc-next">Скидка −{cur.discount}% на блюда применяется сама. С промокодом не складывается.</small>
             )}
             <div className="lc-ladder">
               {LEVELS.map(l => (
                 <div key={l.id} className={`rung ${totalSum >= l.min ? 'on' : ''}`}>
                   <span className="dot" style={{background: totalSum >= l.min ? l.color : '#E5E7EB'}}/>
-                  <span>{l.name}</span>
+                  <span>{l.name}{l.discount > 0 ? ` · −${l.discount}%` : ''}</span>
                   <small>от {l.min.toLocaleString('ru-RU')} ₽</small>
                 </div>
               ))}

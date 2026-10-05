@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 	"net"
 	"net/http"
@@ -294,16 +295,50 @@ func AuthLogout(d *CustomerDeps) http.HandlerFunc {
 	}
 }
 
+// level is a spending rank. Discount is a permanent percent off the food in
+// every order of a logged-in customer; it never applies together with a promo
+// code (the promo wins) and is counted after the free-pizza gift.
 type level struct {
 	ID, Name string
 	Min      float64
+	Discount int
 }
 
 var levels = []level{
-	{"novice", "Новичок", 0},
-	{"fan", "Любитель", 3000},
-	{"eater", "Пиццаед", 20000},
-	{"mega", "Мощнейший пиццаед", 50000},
+	{"novice", "Новичок", 0, 0},
+	{"fan", "Любитель", 3000, 5},
+	{"eater", "Пиццаед", 20000, 10},
+	{"mega", "Мощнейший пиццаед", 50000, 20},
+}
+
+// levelFor returns the rank earned by this much lifetime spending.
+func levelFor(totalSpent float64) level {
+	cur := levels[0]
+	for _, l := range levels {
+		if totalSpent >= l.Min {
+			cur = l
+		}
+	}
+	return cur
+}
+
+// levelName turns a stored rank id back into its Russian name.
+func levelName(id string) string {
+	for _, l := range levels {
+		if l.ID == id {
+			return l.Name
+		}
+	}
+	return ""
+}
+
+// rankDiscount is the money off the food for that rank, gift already deducted.
+func rankDiscount(l level, foodTotal, giftDiscount float64) float64 {
+	base := foodTotal - giftDiscount
+	if l.Discount <= 0 || base <= 0 {
+		return 0
+	}
+	return math.Round(base * float64(l.Discount) / 100)
 }
 
 func loyaltyView(s repo.LoyaltyStats) map[string]any {
@@ -324,10 +359,10 @@ func loyaltyView(s repo.LoyaltyStats) map[string]any {
 		"pizzaCount":  s.PizzaCount,
 		"inCycle":     s.PizzaCount % pizzasPerGift,
 		"perGift":     pizzasPerGift,
-		"level":       map[string]any{"id": cur.ID, "name": cur.Name, "min": cur.Min},
+		"level":       map[string]any{"id": cur.ID, "name": cur.Name, "min": cur.Min, "discount": cur.Discount},
 	}
 	if next != nil {
-		v["nextLevel"] = map[string]any{"id": next.ID, "name": next.Name, "min": next.Min}
+		v["nextLevel"] = map[string]any{"id": next.ID, "name": next.Name, "min": next.Min, "discount": next.Discount}
 	}
 	return v
 }

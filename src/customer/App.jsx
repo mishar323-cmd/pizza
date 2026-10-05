@@ -326,7 +326,7 @@ function App() {
         onLogin={AUTH_ENABLED ? () => setLoginOpen(true) : undefined}
         onConfirm={async (data) => {
           const delivery = data.delivery || 0;
-          const grandTotal = Math.max(0, total + delivery - (data.promoDiscount || 0) - (data.loyaltyDiscount || 0));
+          const grandTotal = Math.max(0, total + delivery - (data.promoDiscount || 0) - (data.loyaltyDiscount || 0) - (data.rankDiscount || 0));
           let created = null;
           try {
             const res = await fetch('/api/orders', {

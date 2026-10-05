@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -47,17 +48,13 @@ func ValidatePromo(d *PromosDeps) http.HandlerFunc {
 			writeError(w, http.StatusUnprocessableEntity, reason)
 			return
 		}
-		if p.PerPhoneLimit > 0 && req.Phone != "" {
-			n, err := d.Promos.CountRedemptionsByPhone(r.Context(), p.ID, req.Phone)
-			if err != nil {
-				log.Printf("promo redemption count: %v", err)
-				writeError(w, http.StatusInternalServerError, "internal error")
-				return
-			}
-			if n >= p.PerPhoneLimit {
-				writeError(w, http.StatusUnprocessableEntity, "Промокод уже использован для этого номера")
-				return
-			}
+		if reason, err := promoBlockedForPhone(r.Context(), d.Promos, p, req.Phone); err != nil {
+			log.Printf("promo phone check: %v", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		} else if reason != "" {
+			writeError(w, http.StatusUnprocessableEntity, reason)
+			return
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -68,6 +65,33 @@ func ValidatePromo(d *PromosDeps) http.HandlerFunc {
 			"newTotal":    round2(req.Subtotal - discount),
 		})
 	}
+}
+
+// promoBlockedForPhone applies the per-customer rules: the redemption limit and
+// «только на первый заказ». Returns the reason to show, empty when allowed.
+func promoBlockedForPhone(ctx context.Context, promos *repo.Promos, p *repo.PromoCode, phone string) (string, error) {
+	if phone == "" {
+		return "", nil
+	}
+	if p.PerPhoneLimit > 0 {
+		n, err := promos.CountRedemptionsByPhone(ctx, p.ID, phone)
+		if err != nil {
+			return "", err
+		}
+		if n >= p.PerPhoneLimit {
+			return "Промокод уже использован для этого номера", nil
+		}
+	}
+	if p.FirstOrderOnly {
+		n, err := promos.OrdersByPhone(ctx, phone)
+		if err != nil {
+			return "", err
+		}
+		if n > 0 {
+			return "Промокод действует только на первый заказ", nil
+		}
+	}
+	return "", nil
 }
 
 func resolveDiscount(p *repo.PromoCode, subtotal float64) (float64, string) {

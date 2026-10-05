@@ -8,7 +8,7 @@ const box = { background: '#fff', border: '1px solid #eee', borderRadius: 14, pa
 const inp = { width: '100%', padding: '11px 13px', borderRadius: 10, border: '1px solid #ddd', fontSize: 14, boxSizing: 'border-box' };
 const label = { display: 'block', fontSize: 13, fontWeight: 600, margin: '0 0 6px', color: '#555' };
 
-const EMPTY = { id: null, code: '', description: '', discountType: 'fixed', discountValue: 0, minOrder: 0, expiresAt: '', active: true };
+const EMPTY = { id: null, code: '', description: '', discountType: 'fixed', discountValue: 0, minOrder: 0, expiresAt: '', active: true, firstOrderOnly: false, perPhoneLimit: 0 };
 
 const isoToDate = (iso) => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : d.toISOString().slice(0, 10); };
 const dateToIso = (s) => { if (!s) return null; const d = new Date(s + 'T23:59:59'); return isNaN(d) ? null : d.toISOString(); };
@@ -43,7 +43,8 @@ export function PromoCodesPage() {
       code: form.code, description: form.description || '',
       discountType: form.discountType, discountValue: Number(form.discountValue),
       minOrder: Number(form.minOrder) || 0, expiresAt: dateToIso(form.expiresAt),
-      active: !!form.active, perPhoneLimit: 0, maxUses: null, startsAt: null, source: 'admin',
+      active: !!form.active, firstOrderOnly: !!form.firstOrderOnly,
+      perPhoneLimit: Number(form.perPhoneLimit) || 0, maxUses: null, startsAt: null, source: 'admin',
     };
     try {
       if (form.id) { await AdminStore.updatePromo(form.id, payload); setOk('Промокод обновлён.'); }
@@ -90,6 +91,7 @@ export function PromoCodesPage() {
                 <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: '#fde8e8', color: '#b42318' }}>−{fmtDiscount(p)}</span>
                 {!p.active && <span style={{ fontSize: 12, color: '#999', padding: '3px 9px', borderRadius: 20, background: '#f0f0f0' }}>выключен</span>}
                 {isExpired(p.expiresAt) && <span style={{ fontSize: 12, color: '#b42318', padding: '3px 9px', borderRadius: 20, background: '#fdf1f1' }}>истёк</span>}
+                {p.firstOrderOnly && <span style={{ fontSize: 12, color: '#1B8A3D', padding: '3px 9px', borderRadius: 20, background: '#e9f7ee' }}>только 1-й заказ</span>}
               </div>
               <div style={{ color: '#999', fontSize: 12.5, marginTop: 3 }}>
                 {p.description ? p.description + ' · ' : ''}от {p.minOrder || 0} ₽ · до {fmtExpiry(p.expiresAt)} · использован {p.usedCount || 0}×
@@ -144,6 +146,10 @@ export function PromoCodesPage() {
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#444', cursor: 'pointer' }}>
                 <input type="checkbox" checked={!!form.active} onChange={(e) => set('active', e.target.checked)} /> Активен
               </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#444', cursor: 'pointer' }}>
+                <input type="checkbox" checked={!!form.firstOrderOnly} onChange={(e) => set('firstOrderOnly', e.target.checked)} /> Только на первый заказ
+              </label>
+              <p style={{ margin: '-4px 0 0', fontSize: 12.5, color: '#999' }}>Промокод отменяет скидку за ранг — в заказе считается только он.</p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setForm(null)} disabled={busy} style={{ padding: '11px 18px', borderRadius: 10, border: '1px solid #ddd', background: '#fff', cursor: 'pointer' }}>Отмена</button>
                 <button type="submit" disabled={busy} style={{ padding: '11px 20px', borderRadius: 10, border: 'none', background: '#DC2828', color: '#fff', fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Сохраняем…' : 'Сохранить'}</button>
