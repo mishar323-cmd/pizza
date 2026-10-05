@@ -4,7 +4,7 @@ import React from 'react';
 import { pizzaGift } from './auth/useAuth.js';
 
 // Bump when consent.html changes materially; stored with each order.
-const PD_CONSENT_VERSION = '2026-09-19';
+const PD_CONSENT_VERSION = '2026-10-05';
 import { PIZZA_DATA, ROMAN_DATA, SANDWICH_DATA, SNACK_DATA, DRINK_DATA, DESSERT_DATA, SIZES, CRUSTS, ADDONS } from '../data/menu.js';
 import Ic from '../shared/icons.jsx';
 import { HalvesCard } from './halves.jsx';
