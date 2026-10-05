@@ -223,3 +223,7 @@
 .co-login-hint:hover { border-color: var(--primary); }
 .name-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .profile-hero small { display: block; }
+.login-tg { display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+.login-tg.disabled { opacity: .5; pointer-events: none; }
+.login-or { display: flex; align-items: center; gap: 10px; color: var(--ink-mute); font-size: 12px; margin: 6px 0; }
+.login-or::before, .login-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }

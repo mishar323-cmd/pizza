@@ -20,6 +20,7 @@ import (
 	"pizza-backend/internal/repo"
 	"pizza-backend/internal/sms"
 	"pizza-backend/internal/telegram"
+	"pizza-backend/internal/tgbot"
 	"pizza-backend/internal/yookassa"
 )
 
@@ -75,7 +76,12 @@ func main() {
 	}
 	customerDeps := &handlers.CustomerDeps{
 		Customers: repo.NewCustomers(pool), Sender: sender, Secret: cfg.JWTSecret, DailyCap: cfg.OTPDailyCap,
-		Enabled: cfg.CustomerAuth,
+		Enabled: cfg.CustomerAuth, PhoneCodes: cfg.SMSMode == "smsc" || cfg.SMSMode == "telegram",
+	}
+	tgLoginDeps := &handlers.TGLoginDeps{
+		Customers: customerDeps,
+		Bot:       tgbot.New(cfg.TGLoginBotToken, cfg.TGApiBase, cfg.TGRelaySecret),
+		Username:  cfg.TGLoginBotName,
 	}
 	orderDeps := &handlers.OrdersDeps{Orders: orders, Promos: promos, Telegram: tg, Customers: customerDeps}
 	promoDeps := &handlers.PromosDeps{Promos: promos}
@@ -92,6 +98,9 @@ func main() {
 	mux.HandleFunc("POST /api/delivery/quote", handlers.DeliveryQuote(geocoder, settings, deliveryOrigin))
 	mux.HandleFunc("GET /api/delivery/zones", handlers.DeliveryZones(settings, deliveryOrigin))
 
+	mux.HandleFunc("GET /api/auth/methods", handlers.AuthMethods(tgLoginDeps))
+	mux.HandleFunc("POST /api/auth/tg/start", handlers.TGLoginStart(tgLoginDeps))
+	mux.HandleFunc("GET /api/auth/tg/status", handlers.TGLoginStatus(tgLoginDeps))
 	mux.HandleFunc("POST /api/auth/request-code", handlers.AuthRequestCode(customerDeps))
 	mux.HandleFunc("POST /api/auth/verify", handlers.AuthVerify(customerDeps))
 	mux.HandleFunc("POST /api/auth/logout", handlers.AuthLogout(customerDeps))
@@ -135,6 +144,8 @@ func main() {
 			cancel()
 		}
 	}()
+
+	go handlers.RunTGLoginBot(ctx, tgLoginDeps)
 
 	go func() {
 		purge := func() {

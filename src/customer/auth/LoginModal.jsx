@@ -23,10 +23,46 @@ export function LoginModal({ open, onClose, auth, localAddresses, onLoggedIn }) 
   const [error, setError] = React.useState('');
   const [resendLeft, setResendLeft] = useCountdown();
   const codeRef = React.useRef(null);
+  const [tg, setTg] = React.useState(null);       // {link, nonce} — вход через бота
+  const [tgState, setTgState] = React.useState('idle'); // idle | opened | error
+  const [tgAvailable, setTgAvailable] = React.useState(true);
+  const [phoneAvailable, setPhoneAvailable] = React.useState(false);
 
   React.useEffect(() => {
-    if (open) { setStep('phone'); setCode(''); setError(''); setBusy(false); }
+    if (!open) return;
+    setStep('phone'); setCode(''); setError(''); setBusy(false); setTgState('idle'); setTg(null);
+    let alive = true;
+    auth.authMethods()
+      .then(m => { if (alive) setPhoneAvailable(!!m.phone); })
+      .catch(() => {});
+    auth.tgStart()
+      .then(r => { if (alive) { setTg(r); setTgAvailable(true); } })
+      .catch(() => { if (alive) setTgAvailable(false); });
+    return () => { alive = false; };
   }, [open]);
+
+  // Пока клиент подтверждает номер в боте, сайт ждёт готовности входа.
+  React.useEffect(() => {
+    if (!open || !tg?.nonce || tgState !== 'opened') return;
+    let alive = true;
+    const timer = setInterval(async () => {
+      try {
+        const r = await auth.tgStatus(tg.nonce);
+        if (!alive) return;
+        if (r.status === 'ready') {
+          clearInterval(timer);
+          await auth.finishWithToken(r.token, localAddresses);
+          onLoggedIn?.({ isNew: false });
+          onClose();
+        } else if (r.status === 'expired' || r.status === 'used') {
+          clearInterval(timer);
+          setTgState('error');
+          setError('Ссылка для входа устарела. Нажмите «Войти через Telegram» ещё раз.');
+        }
+      } catch {}
+    }, 2000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [open, tg, tgState]);
 
   React.useEffect(() => {
     if (step === 'code') setTimeout(() => codeRef.current?.focus(), 50);
@@ -87,19 +123,39 @@ export function LoginModal({ open, onClose, auth, localAddresses, onLoggedIn }) 
         <div className="profile-body">
           {step === 'phone' ? (
             <form className="login-form" onSubmit={e => { e.preventDefault(); send(); }}>
-              <p className="login-lead">Войдите по номеру телефона — сохраним адреса и историю заказов, а каждая 8-я пицца будет бесплатной.</p>
+              <p className="login-lead">Войдите, чтобы сохранять адреса и историю заказов, а каждая 8-я пицца была бесплатной.</p>
+
+              {tgAvailable && (
+                <>
+                  <label className="login-consent">
+                    <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)}/>
+                    <span>Даю <a href="/consent.html" target="_blank" rel="noopener">согласие на обработку персональных данных</a></span>
+                  </label>
+                  <a
+                    className={`btn btn-primary login-submit login-tg ${(!agree || !tg) ? 'disabled' : ''}`}
+                    href={tg?.link || '#'}
+                    target="_blank"
+                    rel="noopener"
+                    onClick={e => { if (!agree || !tg) { e.preventDefault(); return; } setTgState('opened'); setError(''); }}
+                  >
+                    Войти через Telegram
+                  </a>
+                  {tgState === 'opened' && <p className="login-note">Откройте бота и нажмите «Поделиться номером». Эта страница сама продолжит вход.</p>}
+                  {!agree && <p className="login-note">Сначала отметьте согласие.</p>}
+                  <p className="login-note">Номер подтверждает Telegram — вводить его и ждать код не нужно.</p>
+                  {phoneAvailable && <div className="login-or"><span>или по номеру телефона</span></div>}
+                </>
+              )}
+              {phoneAvailable && <>
               <label className="login-label" htmlFor="login-phone">Номер телефона</label>
               <input id="login-phone" className="co-input login-phone" type="tel" inputMode="tel" autoComplete="tel"
                 placeholder="+7 9XX XXX-XX-XX" value={phone} autoFocus
                 onChange={e => { setPhone(e.target.value); setError(''); }}/>
-              <label className="login-consent">
-                <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)}/>
-                <span>Даю <a href="/consent.html" target="_blank" rel="noopener">согласие на обработку персональных данных</a></span>
-              </label>
               {error && <div className="login-error">{error}</div>}
               <button type="submit" className="btn btn-primary login-submit" disabled={!phoneOk || !agree || busy}>
                 {busy ? 'Отправляем…' : 'Получить код'}
               </button>
+              </>}
               <p className="login-note">Вход не обязателен — заказать можно и без него.</p>
             </form>
           ) : (

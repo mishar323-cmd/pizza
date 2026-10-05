@@ -34,6 +34,8 @@ type Config struct {
 	OTPDailyCap       int
 	CustomerAuth      bool
 	TGGatewayToken    string
+	TGLoginBotToken   string
+	TGLoginBotName    string
 }
 
 func Load() *Config {
@@ -63,6 +65,8 @@ func Load() *Config {
 		OTPDailyCap:       getenvInt("OTP_DAILY_CAP", 150),
 		CustomerAuth:      os.Getenv("CUSTOMER_AUTH") == "on",
 		TGGatewayToken:    os.Getenv("TG_GATEWAY_TOKEN"),
+		TGLoginBotToken:   os.Getenv("TG_LOGIN_BOT_TOKEN"),
+		TGLoginBotName:    os.Getenv("TG_LOGIN_BOT_USERNAME"),
 	}
 	if cfg.SMSMode == "telegram" && cfg.TGGatewayToken == "" {
 		log.Println("WARN: TG_GATEWAY_TOKEN not set — falling back to SMSC for login codes")

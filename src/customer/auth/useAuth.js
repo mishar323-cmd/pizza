@@ -3,7 +3,7 @@ import React from 'react';
 
 // Customer login is built but switched off until the SMS contract is signed.
 // Also enable on the server: CUSTOMER_AUTH=on in .env.
-export const AUTH_ENABLED = false;
+export const AUTH_ENABLED = true;
 
 const TOKEN_KEY = 'dvp_session';
 
@@ -83,6 +83,25 @@ export function useAuth() {
 
   const requestCode = (phone) => api('POST', '/api/auth/request-code', { phone });
 
+  const authMethods = () => api('GET', '/api/auth/methods');
+  const tgStart = () => api('POST', '/api/auth/tg/start');
+  const tgStatus = (nonce) => api('GET', `/api/auth/tg/status?nonce=${encodeURIComponent(nonce)}`);
+
+  // Вход закончился в боте: токен выдаётся один раз по nonce.
+  const finishWithToken = async (tok, importAddresses) => {
+    writeToken(tok);
+    tokenRef.current = tok;
+    setToken(tok);
+    let fresh = await refresh();
+    if (fresh && fresh.addresses.length === 0 && importAddresses?.length) {
+      for (const a of importAddresses.slice(0, 10)) {
+        try { await api('POST', '/api/me/addresses', { label: a.label || '', text: a.text }); } catch {}
+      }
+      fresh = await refresh();
+    }
+    return fresh;
+  };
+
   const verify = async (phone, code, importAddresses) => {
     const data = await api('POST', '/api/auth/verify', { phone, code });
     writeToken(data.token);
@@ -113,7 +132,7 @@ export function useAuth() {
   return {
     token, me, user: me?.user || null, loading, isLoggedIn: !!token && !!me,
     authHeader: () => (tokenRef.current ? { Authorization: 'Bearer ' + tokenRef.current } : {}),
-    requestCode, verify, logout, refresh,
+    requestCode, verify, logout, refresh, authMethods, tgStart, tgStatus, finishWithToken,
     updateName: mutate((name) => api('PUT', '/api/me', { name })),
     addAddress: mutate((text, label) => api('POST', '/api/me/addresses', { text, label: label || '' })),
     updateAddress: mutate((a) => api('PUT', `/api/me/addresses/${a.id}`, { label: a.label || '', text: a.text, isFavorite: !!a.isFavorite })),

@@ -34,12 +34,13 @@ const (
 )
 
 type CustomerDeps struct {
-	Customers *repo.Customers
-	Sender    sms.Sender
-	Secret    []byte // HMAC key for OTP hashes
-	DailyCap  int    // global codes/day, protects the SMS balance
-	Enabled   bool   // login switched on (CUSTOMER_AUTH=on)
-	mu        sync.Mutex
+	Customers  *repo.Customers
+	Sender     sms.Sender
+	Secret     []byte // HMAC key for OTP hashes
+	DailyCap   int    // global codes/day, protects the SMS balance
+	Enabled    bool   // login switched on (CUSTOMER_AUTH=on)
+	PhoneCodes bool   // a real SMS/call provider is configured
+	mu         sync.Mutex
 }
 
 // normalizePhone accepts Russian mobile numbers in any common notation and
@@ -140,8 +141,8 @@ func AuthRequestCode(d *CustomerDeps) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
-		if !d.Enabled {
-			writeError(w, http.StatusServiceUnavailable, "Вход по номеру скоро появится")
+		if !d.Enabled || !d.PhoneCodes {
+			writeError(w, http.StatusServiceUnavailable, "Вход по коду сейчас недоступен — войдите через Telegram")
 			return
 		}
 		phone, ok := normalizePhone(req.Phone)
