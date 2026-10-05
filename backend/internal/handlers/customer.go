@@ -302,8 +302,8 @@ type level struct {
 var levels = []level{
 	{"novice", "Новичок", 0},
 	{"fan", "Любитель", 3000},
-	{"eater", "Пиццаед", 10000},
-	{"mega", "Мощнейший пиццаед", 25000},
+	{"eater", "Пиццаед", 20000},
+	{"mega", "Мощнейший пиццаед", 50000},
 }
 
 func loyaltyView(s repo.LoyaltyStats) map[string]any {

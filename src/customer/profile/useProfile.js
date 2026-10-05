@@ -4,8 +4,8 @@ import React from 'react';
 export const LEVELS = [
   { id: 'novice',  name: 'Новичок',          min: 0,     color: '#9CA3AF' },
   { id: 'fan',     name: 'Любитель',         min: 3000,  color: '#10B981' },
-  { id: 'eater',   name: 'Пиццаед',          min: 10000, color: '#F59E0B' },
-  { id: 'mega',    name: 'Мощнейший пиццаед',min: 25000, color: '#DC2828' },
+  { id: 'eater',   name: 'Пиццаед',          min: 20000, color: '#F59E0B' },
+  { id: 'mega',    name: 'Мощнейший пиццаед',min: 50000, color: '#DC2828' },
 ];
 
 export function getLevel(total) {
