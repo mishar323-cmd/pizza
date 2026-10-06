@@ -85,9 +85,13 @@
 .addr-del:hover { background: var(--line); }
 .addr-add { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .addr-add input { min-width: 0; width: 100%; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--bg-elev); font: inherit; font-size: 13px; }
-.addr-add input:first-child { grid-column: 1; }
-.addr-add input:last-of-type { grid-column: 2; }
-.addr-add button { grid-column: 1 / -1; width: 100%; justify-self: stretch; }
+.addr-add .addr-text { grid-column: 1 / -1; }
+.addr-add .addr-label { grid-column: 1; }
+.addr-add button { grid-column: 2; width: 100%; justify-self: stretch; }
+@media (max-width: 420px) {
+  .addr-add { grid-template-columns: 1fr; }
+  .addr-add .addr-label, .addr-add button { grid-column: 1 / -1; }
+}
 .btn-sm { padding: 10px 14px; font-size: 13px; }
 
 .orders-list { display: flex; flex-direction: column; gap: 8px; }

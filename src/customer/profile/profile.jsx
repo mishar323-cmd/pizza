@@ -87,7 +87,12 @@ export function ProfileModal({ open, onClose, auth }) {
 
   const addAddress = async () => {
     const text = addrText.trim();
-    if (text.length < 5 || busy) return;
+    if (busy) return;
+    // Кнопка всегда нажимается: молчаливый disabled клиенты принимают за поломку.
+    if (text.length < 5) {
+      setAddrMsg({ ok: false, text: 'Напишите адрес целиком — посёлок, улицу и дом. Например: Глухово, Романовская 5, кв 12' });
+      return;
+    }
     setBusy(true); setAddrMsg(null);
     try {
       await auth.addAddress(text, addrLabel.trim());
@@ -181,10 +186,12 @@ export function ProfileModal({ open, onClose, auth }) {
               {addresses.length === 0 && <div className="empty-orders">Адресов пока нет — добавьте, чтобы не вводить при заказе.</div>}
             </div>
             <form className="addr-add" onSubmit={e => { e.preventDefault(); addAddress(); }}>
-              <input placeholder="Метка (Дом / Работа)" value={addrLabel} maxLength={40} onChange={e => setAddrLabel(e.target.value)}/>
-              <input placeholder="Посёлок, улица, дом, кв." value={addrText} maxLength={300} onChange={e => { setAddrText(e.target.value); setAddrMsg(null); }}/>
-              <button className="btn btn-ghost btn-sm" disabled={busy || addrText.trim().length < 5}>
-                <Ic name="plus" size={14}/> Добавить
+              <input className="addr-text" placeholder="Посёлок, улица, дом, кв." value={addrText} maxLength={300}
+                onChange={e => { setAddrText(e.target.value); setAddrMsg(null); }}/>
+              <input className="addr-label" placeholder="Метка: Дом, Работа — необязательно" value={addrLabel} maxLength={40}
+                onChange={e => setAddrLabel(e.target.value)}/>
+              <button className="btn btn-ghost btn-sm" disabled={busy}>
+                <Ic name="plus" size={14}/> {busy ? 'Сохраняем…' : 'Добавить'}
               </button>
             </form>
             {addrMsg && <div className={`addr-msg ${addrMsg.ok ? 'ok' : 'bad'}`}>{addrMsg.text}</div>}
