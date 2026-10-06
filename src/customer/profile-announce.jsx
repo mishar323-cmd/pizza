@@ -4,7 +4,9 @@ import { getCookieConsent } from './consent.js';
 
 // Разовое объявление о личном кабинете. Показывается один раз на браузер,
 // только гостям и только после того, как закрыт cookie-баннер.
+// Акция недельная: после UNTIL поп-ап не появляется, даже если код не убрали.
 const KEY = 'dvp_profile_announce_v1';
+const UNTIL = Date.parse('2026-10-13T00:00:00+03:00');
 
 export function wasProfileAnnounced() {
   try { return !!localStorage.getItem(KEY); } catch { return true; }
@@ -24,7 +26,7 @@ export function ProfileAnnounce({ loggedIn, onLogin }) {
   const [show, setShow] = React.useState(false);
 
   React.useEffect(() => {
-    if (loggedIn || wasProfileAnnounced()) return;
+    if (loggedIn || wasProfileAnnounced() || Date.now() >= UNTIL) return;
     let timer = null;
     const arm = () => { timer = setTimeout(() => setShow(true), 2000); };
     // Сначала человек решает про cookie, и только потом появляемся мы.
