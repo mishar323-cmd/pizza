@@ -9,6 +9,7 @@ import { LoginModal } from './auth/LoginModal.jsx';
 import { getCookieConsent, setCookieConsent, loadMetrika } from './consent.js';
 import { DeliveryMap } from './delivery-map.jsx';
 import { NightOverlay } from './night-overlay.jsx';
+import { ProfileAnnounce } from './profile-announce.jsx';
 import { TopBar, Header, Hero, ScrollingBanner } from './header-hero.jsx';
 
 import { MenuSection, CartDrawer, PizzaDetail, ToastStack, CheckoutModal } from './menu.jsx';
@@ -369,6 +370,7 @@ function App() {
       <ToastStack toasts={toasts}/>
       <NightOverlay force={t.forceNight}/>
       <CookieBanner/>
+      {AUTH_ENABLED && <ProfileAnnounce loggedIn={!!auth.token} onLogin={() => setLoginOpen(true)}/>}
     </>
   );
 }
