@@ -224,7 +224,12 @@ var digitsOnly = regexp.MustCompile(`\D+`)
 
 func normalizePhone(p string) string {
 	p = digitsOnly.ReplaceAllString(p, "")
-	if strings.HasPrefix(p, "8") {
+	switch {
+	case len(p) == 10:
+		// Typed without the country code (e.g. 999 123-45-67). YooKassa
+		// rejects a receipt phone shorter than 11 digits with a 400.
+		p = "7" + p
+	case strings.HasPrefix(p, "8"):
 		p = "7" + p[1:]
 	}
 	return p

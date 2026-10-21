@@ -16,6 +16,7 @@ func CreatePayment(yk *yookassa.Client) http.HandlerFunc {
 			return
 		}
 		if req.Amount <= 0 || len(req.Items) == 0 || req.ReturnURL == "" {
+			log.Printf("create-payment invalid payload: amount=%v items=%d returnUrl=%t", req.Amount, len(req.Items), req.ReturnURL != "")
 			writeError(w, http.StatusBadRequest, "invalid payment payload")
 			return
 		}
@@ -25,6 +26,15 @@ func CreatePayment(yk *yookassa.Client) http.HandlerFunc {
 			log.Printf("yookassa error: %v", err)
 			writeError(w, http.StatusBadGateway, "payment service unavailable")
 			return
+		}
+		if status >= 400 {
+			// YooKassa rejections (bad receipt, phone, amount) were invisible in
+			// our logs; keep the reason, trimmed, without echoing customer data.
+			body := string(data)
+			if len(body) > 300 {
+				body = body[:300]
+			}
+			log.Printf("yookassa rejected payment: status=%d order=%d body=%s", status, req.OrderID, body)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
