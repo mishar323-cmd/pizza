@@ -619,6 +619,15 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
     }
   };
 
+  // Промокоды «только на первый заказ» зависят от номера: если номер ввели
+  // или поменяли после применения кода — перепроверяем его по новому номеру.
+  React.useEffect(() => {
+    if (promoState === 'idle' || !promoCode.trim()) return;
+    if (phone.replace(/\D/g, '').length < 10) return;
+    const t = setTimeout(() => { applyPromo(); }, 600);
+    return () => clearTimeout(t);
+  }, [phone]);
+
   const clearPromo = () => {
     setPromoCode('');
     setPromoState('idle');
@@ -688,11 +697,19 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
           setPaying(false);
         }
       } catch (e) {
-        setPayError('Нет соединения с сервером оплаты');
+        // Отказ сервера (промокод, состав) приходит своим текстом; сетевые — общей фразой.
+        setPayError(e instanceof TypeError ? 'Нет соединения с сервером оплаты' : (e.message || 'Не удалось оформить заказ'));
         setPaying(false);
       }
     } else {
-      onConfirm(orderData);
+      setPayError('');
+      setPaying(true);
+      try {
+        await onConfirm(orderData);
+      } catch (e) {
+        setPayError(e.message || 'Не удалось оформить заказ');
+      }
+      setPaying(false);
     }
   };
 

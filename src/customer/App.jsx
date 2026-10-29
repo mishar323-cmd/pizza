@@ -330,7 +330,7 @@ function App() {
           const delivery = data.delivery || 0;
           const grandTotal = Math.max(0, total + delivery - (data.promoDiscount || 0) - (data.loyaltyDiscount || 0) - (data.rankDiscount || 0));
           let created = null;
-          try {
+          {
             const res = await fetch('/api/orders', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', ...auth.authHeader() },
@@ -345,7 +345,10 @@ function App() {
                 ...readUtm(),
               }),
             });
-            created = await res.json();
+            created = await res.json().catch(() => null);
+            // A refused order (promo no longer valid, bad payload) must not
+            // clear the cart or pretend it went through.
+            if (!res.ok) throw new Error((created && created.error) || 'Не удалось оформить заказ, попробуйте ещё раз');
             if (auth.me) {
               const addr = (data.address || '').trim();
               const known = auth.me.addresses.some(a => a.text.trim().toLowerCase() === addr.toLowerCase());
@@ -357,7 +360,7 @@ function App() {
             } else {
               profileState.placeOrder(cart, grandTotal, data.address);
             }
-          } catch {}
+          }
           // Online payment keeps the checkout open and redirects to YooKassa;
           // only clear/close the cart for pay-on-delivery.
           if (data.payMethod !== 'online') {

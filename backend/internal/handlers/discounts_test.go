@@ -100,20 +100,27 @@ func TestPromoRules(t *testing.T) {
 		t.Fatalf("first order discounts: %+v %v", o, err)
 	}
 
-	// 2. Второй заказ тем же кодом — отказ, но заказ создаётся без скидки.
+	// 2. Второй заказ тем же кодом — отказ целиком, заказ не создаётся.
 	if s, b := api.do("POST", "/api/promo/validate", "", map[string]any{"code": "ПЕРВЫЙ", "subtotal": 1000, "phone": phone}); s != 422 {
 		t.Fatalf("second validate: %d %v", s, b)
 	}
+	if s, b := api.do("POST", "/api/orders", token, map[string]any{
+		"name": "Миша", "phone": phone, "receiveMethod": "pickup", "payMethod": "cash",
+		"items": pizzas(1000), "total": 800, "promoCode": "ПЕРВЫЙ",
+	}); s != 422 {
+		t.Fatalf("second order with the code should be refused: %d %v", s, b)
+	}
+	// Без кода — проходит, и скидка за ранг на месте.
 	s, created2 := api.do("POST", "/api/orders", token, map[string]any{
 		"name": "Миша", "phone": phone, "receiveMethod": "pickup", "payMethod": "cash",
-		"items": pizzas(1000), "total": 950, "promoCode": "ПЕРВЫЙ",
+		"items": pizzas(1000), "total": 950,
 	})
 	if s != 201 {
 		t.Fatalf("second order: %d %v", s, created2)
 	}
 	o2, err := orders.GetByID(ctx, int64(created2["id"].(float64)))
 	if err != nil || o2.PromoCode != "" || o2.PromoDiscount != 0 {
-		t.Fatalf("expired promo applied again: %+v %v", o2, err)
+		t.Fatalf("promo applied without a code: %+v %v", o2, err)
 	}
 	// 3200 ₽ за первый заказ → «Любитель», −5 % от 1000 ₽.
 	if o2.RankLevel != "fan" || o2.RankDiscount != 50 {

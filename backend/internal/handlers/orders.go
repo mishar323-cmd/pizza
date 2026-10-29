@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -135,10 +136,19 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 					promo = p
 					promoDiscount = disc
 				} else {
+					// The client has already priced the order with this code; silently
+					// dropping it would keep the discounted total. Refuse instead.
 					log.Printf("promo %s rejected at order creation: %s", req.PromoCode, reason)
+					writeError(w, http.StatusUnprocessableEntity, reason)
+					return
 				}
+			} else if errors.Is(err, repo.ErrPromoNotFound) {
+				writeError(w, http.StatusUnprocessableEntity, "Промокод не найден")
+				return
 			} else {
 				log.Printf("promo lookup at order creation: %v", err)
+				writeError(w, http.StatusUnprocessableEntity, "Промокод сейчас недоступен — уберите его или попробуйте позже")
+				return
 			}
 		}
 
