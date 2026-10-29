@@ -105,6 +105,13 @@ func CreateOrder(d *OrdersDeps) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "укажите адрес доставки")
 			return
 		}
+		for _, it := range req.Items {
+			// A pizza line priced like a topping means the client sent a broken
+			// size; the order is still accepted, the kitchen must see it.
+			if it.Cat == "pizza" && it.Price > 0 && it.Price < 300 {
+				log.Printf("order suspicious pizza line: %q size=%q price=%.0f", it.Name, it.Size, it.Price)
+			}
+		}
 
 		var (
 			promo         *repo.PromoCode

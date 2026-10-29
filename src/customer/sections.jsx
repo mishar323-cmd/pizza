@@ -7,7 +7,38 @@ import { openCookieSettings } from './consent.js';
 
 const Ic3 = Ic;
 
+// Карточки акций ведёт админка (/api/promos). Пока ответа нет — показываем
+// встроенные; пустой список из админки прячет секцию целиком.
+const PROMO_FALLBACK = [
+  { id: 'p1', kind: 'big',    tag: 'главная акция', title: '2 пиццы 30 см = 1 290 ₽', body: 'Любые две классические пиццы среднего размера. До конца недели.', cta: 'Собрать комбо' },
+  { id: 'p2', kind: 'accent', tag: '−20%',           title: 'На первый заказ',          body: 'Промокод ПЕРВЫЙ при оформлении.', cta: 'Скопировать' },
+  { id: 'p3', kind: 'dark',   tag: 'каждая 8-я',     title: 'Бесплатно',                body: 'Каждая 8-я пицца — в подарок.', cta: 'Подробнее' },
+];
+
 export function PromoSection({ onScrollToMenu }) {
+  const [promos, setPromos] = React.useState(null);
+  const [copied, setCopied] = React.useState('');
+  React.useEffect(() => {
+    let alive = true;
+    fetch('/api/promos').then(r => (r.ok ? r.json() : null)).then(list => {
+      if (alive && Array.isArray(list)) setPromos(list);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const cards = promos === null ? PROMO_FALLBACK : promos;
+  if (!cards.length) return null;
+
+  const act = (p) => {
+    const isCopy = /скопир/i.test(p.cta || '');
+    const code = isCopy && (p.body || '').match(/[А-ЯЁA-Z0-9]{4,}/);
+    if (code && navigator.clipboard) {
+      navigator.clipboard.writeText(code[0]).catch(() => {});
+      setCopied(p.id); setTimeout(() => setCopied(''), 1800);
+      return;
+    }
+    onScrollToMenu();
+  };
+
   return (
     <section id="promo" className="container" data-screen-label="promo">
       <div className="sec-head">
@@ -17,30 +48,18 @@ export function PromoSection({ onScrollToMenu }) {
         <p className="sub">Каждую неделю выкатываем новую — следите за Telegram-каналом, чтобы успеть.</p>
       </div>
       <div className="promo-grid">
-        <div className="promo-card big">
-          <div>
-            <span className="promo-tag">главная акция</span>
-            <h3>2 пиццы 30 см<br/>= 1 290 ₽</h3>
-            <p>Любые две классические пиццы среднего размера. До конца недели.</p>
+        {cards.map(p => (
+          <div key={p.id} className={`promo-card ${p.kind || 'accent'}`}>
+            <div>
+              <span className="promo-tag" style={p.kind === 'dark' ? {background: 'rgba(255,184,0,0.2)', color:'var(--accent)'} : undefined}>{p.tag}</span>
+              <h3>{p.title}</h3>
+              <p>{p.body}</p>
+            </div>
+            {p.cta && <button className="promo-cta" onClick={() => act(p)}>{copied === p.id ? 'Скопировано' : p.cta}</button>}
+            <div className="visual-disc"/>
+            {p.kind === 'big' && <div className="visual-disc inner"/>}
           </div>
-          <button className="promo-cta" onClick={onScrollToMenu}>Собрать комбо</button>
-          <div className="visual-disc"/>
-          <div className="visual-disc inner"/>
-        </div>
-        <div className="promo-card accent">
-          <span className="promo-tag">−15%</span>
-          <h3>На&nbsp;первый заказ</h3>
-          <p>Промокод <strong>ПЕРВЫЙ</strong> при оформлении.</p>
-          <button className="promo-cta">Скопировать</button>
-          <div className="visual-disc"/>
-        </div>
-        <div className="promo-card dark">
-          <span className="promo-tag" style={{background: 'rgba(255,184,0,0.2)', color:'var(--accent)'}}>каждая 8-я</span>
-          <h3>Бесплатно</h3>
-          <p>Каждая 8-я пицца — в подарок.</p>
-          <button className="promo-cta">Подробнее</button>
-          <div className="visual-disc"/>
-        </div>
+        ))}
       </div>
     </section>
   );

@@ -307,6 +307,7 @@ function App() {
         }}
       />
       <PizzaDetail
+        key={detail ? detail.id : 'none'}
         pizza={detail}
         onClose={() => setDetail(null)}
         onAdd={addToCart}

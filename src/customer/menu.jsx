@@ -366,7 +366,10 @@ export function CartDrawer({ open, onClose, items, addToCart, removeFromCart, to
 export function PizzaDetail({ pizza, onClose, onAdd }) {
   const isPizza = !!(pizza && pizza.prices && (pizza.prices.sm || pizza.prices.md || pizza.prices.lg));
   const customSizes = (pizza && Array.isArray(pizza.sizes)) ? pizza.sizes : null;
-  const [size, setSize] = React.useState(isPizza ? 'md' : 0);
+  const [sizeState, setSize] = React.useState(isPizza ? 'md' : 0);
+  // Размер обязан соответствовать типу позиции: у пиццы — sm/md/lg, иначе база
+  // стала бы 0 ₽ и в заказ ушла бы «пицца» по цене одних добавок.
+  const size = isPizza ? (['sm', 'md', 'lg'].includes(sizeState) ? sizeState : 'md') : (typeof sizeState === 'number' ? sizeState : 0);
   const [crust, setCrust] = React.useState('thin');
   const [addons, setAddons] = React.useState([]);
 

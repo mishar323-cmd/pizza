@@ -95,6 +95,7 @@ func main() {
 	mux.HandleFunc("POST /api/iiko/order", handlers.IikoOrder(ik))
 	mux.HandleFunc("POST /api/promo/validate", handlers.ValidatePromo(promoDeps))
 	mux.HandleFunc("GET /api/menu", handlers.PublicMenu(settings))
+	mux.HandleFunc("GET /api/promos", handlers.PublicPromos(settings))
 	mux.HandleFunc("POST /api/delivery/quote", handlers.DeliveryQuote(geocoder, settings, deliveryOrigin))
 	mux.HandleFunc("GET /api/delivery/zones", handlers.DeliveryZones(settings, deliveryOrigin))
 

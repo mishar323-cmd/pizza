@@ -457,6 +457,32 @@ func AdminSettingsPut(d *AdminDeps) http.HandlerFunc {
 // the stop-list, so the storefront reflects what admins edit. Public, no auth.
 // Falls back to empty when nothing is stored yet — the frontend then uses its
 // bundled default menu.
+// PublicPromos serves the storefront the promo cards the admin keeps enabled.
+// The storefront used to ship these cards hardcoded, so switching one off in
+// the admin changed nothing on the site.
+func PublicPromos(settings *repo.Settings) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		raw, err := settings.GetRaw(r.Context(), "promos", `[]`)
+		if err != nil {
+			log.Printf("public promos: %v", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		var all []map[string]any
+		if err := json.Unmarshal(raw, &all); err != nil {
+			log.Printf("public promos decode: %v", err)
+			all = nil
+		}
+		out := make([]map[string]any, 0, len(all))
+		for _, p := range all {
+			if en, ok := p["enabled"].(bool); !ok || en {
+				out = append(out, p)
+			}
+		}
+		writeJSON(w, http.StatusOK, out)
+	}
+}
+
 func PublicMenu(settings *repo.Settings) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		menuRaw, err := settings.GetRaw(r.Context(), "menu", `{"items":null,"categories":[]}`)
