@@ -578,6 +578,18 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
     return () => { stale = true; clearTimeout(t); };
   }, [open, receiveMethod, pickedAddr, customAddr, total, addresses]);
 
+  // Промокоды «только на первый заказ» зависят от номера: если номер ввели
+  // или поменяли после применения кода — перепроверяем его по новому номеру.
+  // Хук стоит до раннего return — иначе при открытии модалки меняется
+  // число хуков и React падает (#310).
+  const applyPromoRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!open || promoState === 'idle' || !promoCode.trim()) return;
+    if (phone.replace(/\D/g, '').length < 10) return;
+    const t = setTimeout(() => { applyPromoRef.current && applyPromoRef.current(); }, 600);
+    return () => clearTimeout(t);
+  }, [phone]);
+
   if (!open) return null;
 
   const isPickup = receiveMethod === 'pickup';
@@ -625,14 +637,7 @@ export function CheckoutModal({ open, onClose, onConfirm, items, total, profile,
     }
   };
 
-  // Промокоды «только на первый заказ» зависят от номера: если номер ввели
-  // или поменяли после применения кода — перепроверяем его по новому номеру.
-  React.useEffect(() => {
-    if (promoState === 'idle' || !promoCode.trim()) return;
-    if (phone.replace(/\D/g, '').length < 10) return;
-    const t = setTimeout(() => { applyPromo(); }, 600);
-    return () => clearTimeout(t);
-  }, [phone]);
+  applyPromoRef.current = applyPromo;
 
   const clearPromo = () => {
     setPromoCode('');
