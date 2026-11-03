@@ -9,6 +9,12 @@ import { PIZZA_DATA, ROMAN_DATA, SANDWICH_DATA, SNACK_DATA, DRINK_DATA, DESSERT_
 import Ic from '../shared/icons.jsx';
 import { HalvesCard } from './halves.jsx';
 
+// Размер без цены в админке (0) — не продаётся: не показываем и не считаем.
+const SIZE_IDS = ['sm', 'md', 'lg'];
+const sizesFor = (p) => SIZE_IDS.filter(id => Number(p && p.prices && p.prices[id]) > 0);
+const defaultSizeFor = (p) => { const a = sizesFor(p); return a.includes('md') ? 'md' : (a[0] || 'md'); };
+const minPriceFor = (p) => { const a = sizesFor(p); return a.length ? Math.min(...a.map(id => Number(p.prices[id]))) : (Number(p && p.price) || 0); };
+
 export function MenuSection({ cart, addToCart, removeFromCart, getQty, openDetail, openHalves }) {
   const [cat, setCat] = React.useState('pizza');
   const [filter, setFilter] = React.useState(null);
@@ -194,7 +200,7 @@ function PizzaCard({ p, qty, onAdd, onMinus, onOpen }) {
         <span className="dot"/>
         <span>{p.kcal} ккал</span>
         <span className="dot"/>
-        <span>30 см</span>
+        <span>от {(SIZES.find(z => z.id === sizesFor(p)[0]) || {}).label || '30 см'}</span>
       </div>
       <div className="pizza-foot">
         <div className="pizza-price">
@@ -363,12 +369,6 @@ export function CartDrawer({ open, onClose, items, addToCart, removeFromCart, to
 }
 
 /* ======================== Pizza Detail Modal ======================== */
-// Размер без цены в админке (0) — не продаётся: не показываем и не считаем.
-const SIZE_IDS = ['sm', 'md', 'lg'];
-const sizesFor = (p) => SIZE_IDS.filter(id => Number(p && p.prices && p.prices[id]) > 0);
-const defaultSizeFor = (p) => { const a = sizesFor(p); return a.includes('md') ? 'md' : (a[0] || 'md'); };
-const minPriceFor = (p) => { const a = sizesFor(p); return a.length ? Math.min(...a.map(id => Number(p.prices[id]))) : (Number(p && p.price) || 0); };
-
 export function PizzaDetail({ pizza, onClose, onAdd }) {
   const isPizza = !!(pizza && pizza.prices && (pizza.prices.sm || pizza.prices.md || pizza.prices.lg));
   const customSizes = (pizza && Array.isArray(pizza.sizes)) ? pizza.sizes : null;
