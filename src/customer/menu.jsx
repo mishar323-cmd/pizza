@@ -200,7 +200,7 @@ function PizzaCard({ p, qty, onAdd, onMinus, onOpen }) {
         <span className="dot"/>
         <span>{p.kcal} ккал</span>
         <span className="dot"/>
-        <span>от {(SIZES.find(z => z.id === sizesFor(p)[0]) || {}).label || '30 см'}</span>
+        <span>{(SIZES.find(z => z.id === sizesFor(p)[0]) || {}).label || '30 см'}</span>
       </div>
       <div className="pizza-foot">
         <div className="pizza-price">
