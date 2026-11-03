@@ -183,7 +183,8 @@ export function HalvesModal({ open, onClose, onAdd }) {
   const priceA = left ? left.prices[size] : 0;
   const priceB = right ? right.prices[size] : 0;
   const total = halfPrice(priceA) + halfPrice(priceB);
-  const canAdd = !!(left && right);
+  // Половинка из пиццы, у которой этого размера нет (цена 0), не продаётся.
+  const canAdd = !!(left && right && priceA > 0 && priceB > 0);
   const sizeLabel = (SIZES.find(s => s.id === size) || {}).label || '30 см';
 
   const handleAdd = () => {

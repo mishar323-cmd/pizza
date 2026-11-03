@@ -123,7 +123,7 @@ export function MenuSection({ cart, addToCart, removeFromCart, getQty, openDetai
             key={p.id}
             p={p}
             qty={getQty(p.id)}
-            onAdd={() => addToCart({ ...p, price: p.prices.md }, { sizeId: 'md', price: p.prices.md })}
+            onAdd={() => { const sid = defaultSizeFor(p); addToCart({ ...p, price: p.prices[sid] }, { sizeId: sid, price: p.prices[sid] }); }}
             onMinus={() => removeFromCart(p.id)}
             onOpen={() => openDetail(p)}
           />
@@ -198,7 +198,7 @@ function PizzaCard({ p, qty, onAdd, onMinus, onOpen }) {
       </div>
       <div className="pizza-foot">
         <div className="pizza-price">
-          <small>от</small>{p.prices.sm} ₽
+          <small>от</small>{minPriceFor(p)} ₽
         </div>
         {qty > 0 ? (
           <div className="add-btn in-cart">
@@ -363,13 +363,19 @@ export function CartDrawer({ open, onClose, items, addToCart, removeFromCart, to
 }
 
 /* ======================== Pizza Detail Modal ======================== */
+// Размер без цены в админке (0) — не продаётся: не показываем и не считаем.
+const SIZE_IDS = ['sm', 'md', 'lg'];
+const sizesFor = (p) => SIZE_IDS.filter(id => Number(p && p.prices && p.prices[id]) > 0);
+const defaultSizeFor = (p) => { const a = sizesFor(p); return a.includes('md') ? 'md' : (a[0] || 'md'); };
+const minPriceFor = (p) => { const a = sizesFor(p); return a.length ? Math.min(...a.map(id => Number(p.prices[id]))) : (Number(p && p.price) || 0); };
+
 export function PizzaDetail({ pizza, onClose, onAdd }) {
   const isPizza = !!(pizza && pizza.prices && (pizza.prices.sm || pizza.prices.md || pizza.prices.lg));
   const customSizes = (pizza && Array.isArray(pizza.sizes)) ? pizza.sizes : null;
-  const [sizeState, setSize] = React.useState(isPizza ? 'md' : 0);
+  const [sizeState, setSize] = React.useState(isPizza ? defaultSizeFor(pizza) : 0);
   // Размер обязан соответствовать типу позиции: у пиццы — sm/md/lg, иначе база
   // стала бы 0 ₽ и в заказ ушла бы «пицца» по цене одних добавок.
-  const size = isPizza ? (['sm', 'md', 'lg'].includes(sizeState) ? sizeState : 'md') : (typeof sizeState === 'number' ? sizeState : 0);
+  const size = isPizza ? (sizesFor(pizza).includes(sizeState) ? sizeState : defaultSizeFor(pizza)) : (typeof sizeState === 'number' ? sizeState : 0);
   const [crust, setCrust] = React.useState('thin');
   const [addons, setAddons] = React.useState([]);
 
@@ -412,7 +418,7 @@ export function PizzaDetail({ pizza, onClose, onAdd }) {
 
           <div style={{fontSize: 13, fontWeight: 600, marginBottom: 8, color:'var(--ink-soft)'}}>Размер</div>
           <div className="size-toggle">
-            {isPizza ? SIZES.map(s => {
+            {isPizza ? SIZES.filter(s => sizesFor(pizza).includes(s.id)).map(s => {
               const sizePrice = (pizza.prices && pizza.prices[s.id]) || null;
               return (
                 <button key={s.id} className={size === s.id ? 'on' : ''} onClick={() => setSize(s.id)}>

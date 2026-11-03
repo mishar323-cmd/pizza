@@ -281,6 +281,7 @@ export function MenuEdit({ store, setStore }) {
                     <label>Цена 35 см</label>
                     <input type="number" value={(draft.prices && draft.prices.lg) || 0} onChange={(e) => setDraft({ ...draft, prices: { ...(draft.prices || {}), lg: +e.target.value } })}/>
                   </div>
+                <p className="admin-sub" style={{ marginTop: 6 }}>Цена 0 — размер не продаётся: на сайте он скрыт, а «от … ₽» считается по остальным.</p>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div className="field">
